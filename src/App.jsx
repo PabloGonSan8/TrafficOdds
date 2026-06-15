@@ -2,6 +2,7 @@ import { useState } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { GameProvider } from "./context/GameContext";
 import { TopBar } from "./components/TopBar";
+import { Footer } from "./components/Footer";
 import { SettingsModal } from "./components/SettingsModal";
 import { Toasts } from "./components/Toasts";
 import { Lobby } from "./pages/Lobby";
@@ -43,6 +44,8 @@ function AppShell() {
         <Route path="/carrera" element={<RacePage />} />
         <Route path="*" element={<Lobby />} />
       </Routes>
+
+      <Footer />
 
       {settingsOpen ? <SettingsModal onClose={() => setSettingsOpen(false)} /> : null}
       <Toasts />

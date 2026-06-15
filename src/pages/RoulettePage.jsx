@@ -508,17 +508,39 @@ export function RoulettePage() {
         // posición es una función suave del tiempo y termina exactamente donde
         // reposará la bola → traspaso a "encajada" continuo, sin ningún salto.
         const p = Math.min(1, (now - sim.start) / SPIN_MS);
-        const rel = sim.relStart + sim.delta * easeOutCubic(p);
+        const baseRel = sim.relStart + sim.delta * easeOutCubic(p);
+        let rel = baseRel;
+        let f = BALL_RIM;
 
-        // Profundidad: en la pista mientras gira; cae a la casilla al final.
-        const fp = p < DROP_AT ? 0 : smoothstep((p - DROP_AT) / (1 - DROP_AT));
-        const f = BALL_RIM + (BALL_POCKET - BALL_RIM) * fp;
+        if (p < DROP_AT) {
+          // Aún en la pista exterior, girando.
+          const sector = Math.floor(rel / SECTOR);
+          if (sim.lastSector !== null && sector !== sim.lastSector) Audio.tick();
+          sim.lastSector = sector;
+        } else {
+          // Caída + traqueteo. La bola baja DEPRISA a la altura de las casillas
+          // (primera mitad de la caída) y luego rebota ENTRE LOS NÚMEROS, no
+          // contra el borde: los saltitos radiales son pequeños y ocurren ya en
+          // la zona de casillas. Todas las perturbaciones se amortiguan a 0 en
+          // p=1 → la bola acaba EXACTA en su casilla, sin salto al encajar.
+          const dropFrac = (p - DROP_AT) / (1 - DROP_AT); // 0→1
+          const depth = smoothstep(Math.min(1, dropFrac * 1.8)); // llega al fondo ~56%
+          const decay = (1 - dropFrac) * (1 - dropFrac);
+          f = BALL_RIM + (BALL_POCKET - BALL_RIM) * depth;
+
+          // Traqueteo entre casillas: fuerte solo cuando ya está abajo (×depth).
+          rel += Math.sin(dropFrac * Math.PI * 8) * decay * depth * SECTOR * 0.6;
+          // Saltitos pequeños DENTRO de la zona de casillas (no hacia el borde).
+          f -= Math.abs(Math.sin(dropFrac * Math.PI * 6)) * decay * depth * 0.03;
+
+          const bounce = Math.floor(dropFrac * 8);
+          if (sim.lastBounce !== bounce) {
+            Audio.tick();
+            sim.lastBounce = bounce;
+          }
+        }
+
         ball = { angle: rotationRef.current + rel, f };
-
-        // Tic al sobrevolar cada casilla (se espacia solo al decelerar).
-        const sector = Math.floor(rel / SECTOR);
-        if (sim.lastSector !== null && sector !== sim.lastSector) Audio.tick();
-        sim.lastSector = sector;
 
         if (p >= 1) {
           ballOffsetRef.current = sim.relStart + sim.delta;
@@ -641,6 +663,7 @@ export function RoulettePage() {
       relStart,
       delta: relFinal - relStart,
       lastSector: null,
+      lastBounce: null,
       result,
       placedBets: Object.values(bets),
       staked: totalBet,

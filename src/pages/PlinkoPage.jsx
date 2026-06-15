@@ -9,7 +9,7 @@ import * as Audio from "../engine/audio";
 const W = 360, H = 430;
 const TOP = 26, ROW_H = 27, SPACING = 24, CENTER = W / 2;
 const SLOT_Y = TOP + PLINKO_ROWS * ROW_H + 14;
-const SEG_MS = 260; // ms por fila (caída total ≈ 3,4 s)
+const SEG_MS = 260; // ms por fila
 
 function slotColor(m) {
   if (m >= 10) return "#ef4444";
@@ -25,22 +25,35 @@ export function PlinkoPage() {
 
   const [stake, setStake] = useState(50);
   const [risk, setRisk] = useState("mid");
-  const [dropping, setDropping] = useState(false);
-  const [hot, setHot] = useState(-1); // ranura iluminada
+  const [live, setLive] = useState(0); // nº de bolas en vuelo (para la UI)
   const [message, setMessage] = useState(null);
 
   const canvasRef = useRef(null);
   const rafRef = useRef(null);
-  const pathRef = useRef([]);
-  const startRef = useRef(0);
+  const ballsRef = useRef([]); // { path, slot, stake, start, landed, landedAt }
+  const flashesRef = useRef([]); // { slot, at }
   const lastTickRef = useRef(0);
   const riskRef = useRef(risk);
-  const hotRef = useRef(-1);
   riskRef.current = risk;
 
-  useEffect(() => () => cancelAnimationFrame(rafRef.current), []);
+  useEffect(() => {
+    paint();
+    return () => cancelAnimationFrame(rafRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  function paint(ball) {
+  function ballPos(ball, now) {
+    const path = ball.path;
+    const idxF = (now - ball.start) / SEG_MS;
+    if (idxF >= path.length - 1) return { ...path[path.length - 1], done: true };
+    const i = Math.floor(idxF);
+    const frac = idxF - i;
+    const a = path[i], b = path[i + 1];
+    const hop = Math.sin(frac * Math.PI) * 5;
+    return { x: a.x + (b.x - a.x) * frac, y: a.y + (b.y - a.y) * frac - hop, done: false };
+  }
+
+  function paint(now = performance.now()) {
     const cv = canvasRef.current;
     if (!cv) return;
     const ctx = cv.getContext("2d");
@@ -52,120 +65,130 @@ export function PlinkoPage() {
     ctx.fillStyle = "#5a6273";
     for (let r = 1; r <= PLINKO_ROWS; r++) {
       for (let k = 0; k <= r; k++) {
-        const x = CENTER + (k - r / 2) * SPACING;
-        const y = TOP + r * ROW_H;
         ctx.beginPath();
-        ctx.arc(x, y, 2.6, 0, Math.PI * 2);
+        ctx.arc(CENTER + (k - r / 2) * SPACING, TOP + r * ROW_H, 2.6, 0, Math.PI * 2);
         ctx.fill();
       }
     }
 
-    // Ranuras de premio
+    // Ranuras (con destello reciente)
     const pays = PLINKO_PAYOUTS[riskRef.current];
     const n = pays.length;
-    const slotW = SPACING;
     ctx.font = "bold 10px Barlow, sans-serif";
     ctx.textAlign = "center";
     for (let i = 0; i < n; i++) {
-      const cx = CENTER + (i - (n - 1) / 2) * slotW;
-      const m = pays[i];
-      ctx.fillStyle = i === hotRef.current ? "#ffffff" : slotColor(m);
+      const cx = CENTER + (i - (n - 1) / 2) * SPACING;
+      const flash = flashesRef.current.find((f) => f.slot === i);
+      const lit = flash ? Math.max(0, 1 - (now - flash.at) / 500) : 0;
+      const base = slotColor(pays[i]);
+      ctx.fillStyle = lit > 0 ? mix(base, "#ffffff", lit) : base;
       ctx.beginPath();
-      ctx.roundRect(cx - slotW / 2 + 1, SLOT_Y, slotW - 2, 22, 4);
+      ctx.roundRect(cx - SPACING / 2 + 1, SLOT_Y - lit * 3, SPACING - 2, 22 + lit * 3, 4);
       ctx.fill();
-      ctx.fillStyle = m >= 1 ? "#06210f" : "#cdd2db";
-      ctx.fillText(`${m}×`, cx, SLOT_Y + 15);
+      ctx.fillStyle = pays[i] >= 1 ? "#06210f" : "#cdd2db";
+      ctx.fillText(`${pays[i]}×`, cx, SLOT_Y + 15);
     }
 
-    // Bola
-    if (ball) {
+    // Bolas
+    for (const ball of ballsRef.current) {
+      const p = ballPos(ball, now);
       ctx.beginPath();
-      ctx.arc(ball.x, ball.y, 7, 0, Math.PI * 2);
-      const g = ctx.createRadialGradient(ball.x - 2, ball.y - 2, 1, ball.x, ball.y, 7);
+      ctx.arc(p.x, p.y, 7, 0, Math.PI * 2);
+      const g = ctx.createRadialGradient(p.x - 2, p.y - 2, 1, p.x, p.y, 7);
       g.addColorStop(0, "#fff");
       g.addColorStop(1, "#f5b301");
       ctx.fillStyle = g;
+      ctx.shadowColor = "rgba(245,179,1,0.6)";
+      ctx.shadowBlur = 8;
       ctx.fill();
+      ctx.shadowBlur = 0;
     }
   }
 
-  function loop(now) {
-    const idxF = (now - startRef.current) / SEG_MS;
-    const path = pathRef.current;
-    if (idxF >= path.length - 1) {
-      land();
-      return;
-    }
-    const i = Math.floor(idxF);
-    const frac = idxF - i;
-    const a = path[i], b = path[i + 1];
-    const x = a.x + (b.x - a.x) * frac;
-    const hop = Math.sin(frac * Math.PI) * 5;
-    const y = a.y + (b.y - a.y) * frac - hop;
-    if (now - lastTickRef.current > 90) {
-      Audio.tick();
-      lastTickRef.current = now;
-    }
-    paint({ x, y });
-    rafRef.current = requestAnimationFrame(loop);
+  function mix(hex, white, t) {
+    const c = parseInt(hex.slice(1), 16);
+    const r = (c >> 16) & 255, g = (c >> 8) & 255, b = c & 255;
+    const m = (v) => Math.round(v + (255 - v) * t);
+    return `rgb(${m(r)},${m(g)},${m(b)})`;
   }
 
-  function land() {
-    cancelAnimationFrame(rafRef.current);
-    const path = pathRef.current;
-    const slot = path.slotIndex;
-    hotRef.current = slot;
-    setHot(slot);
-    const pays = PLINKO_PAYOUTS[riskRef.current];
-    const mult = pays[slot];
-    paint(null);
-    setDropping(false);
-    const payout = Math.round(stake * mult);
+  function settle(ball) {
+    const pays = PLINKO_PAYOUTS[ball.risk];
+    const mult = pays[ball.slot];
+    flashesRef.current.push({ slot: ball.slot, at: performance.now() });
+    const payout = Math.round(ball.stake * mult);
     if (payout > 0) {
       awardPoints(payout, `🔵 Plinko: ×${mult} → +${payout} pts`);
-      setMessage({
-        kind: mult >= 1 ? "win" : "lose",
-        text: `Cae en ×${mult} → ${payout} pts${mult < 1 ? " (recuperas parte)" : ""}.`,
-      });
+      setMessage({ kind: mult >= 1 ? "win" : "lose", text: `Cae en ×${mult} → ${payout} pts.` });
       if (mult >= 1) Audio.win(); else Audio.lose();
     } else {
-      setMessage({ kind: "lose", text: `Cae en ×0. Pierdes ${stake} pts.` });
+      setMessage({ kind: "lose", text: `Cae en ×0. Pierdes ${ball.stake} pts.` });
       Audio.lose();
     }
   }
 
+  function loop(now) {
+    // Avanza/limpia bolas.
+    for (const ball of ballsRef.current) {
+      const p = ballPos(ball, now);
+      if (p.done && !ball.landed) {
+        ball.landed = true;
+        ball.landedAt = now;
+        settle(ball);
+      }
+    }
+    ballsRef.current = ballsRef.current.filter((b) => !b.landed || now - b.landedAt < 220);
+    flashesRef.current = flashesRef.current.filter((f) => now - f.at < 500);
+    setLive(ballsRef.current.filter((b) => !b.landed).length);
+
+    if (now - lastTickRef.current > 80) {
+      Audio.tick();
+      lastTickRef.current = now;
+    }
+    paint(now);
+
+    if (ballsRef.current.length > 0 || flashesRef.current.length > 0) {
+      rafRef.current = requestAnimationFrame(loop);
+    } else {
+      rafRef.current = null;
+      paint(now);
+    }
+  }
+
   function drop() {
-    if (dropping || stake < 10) return;
+    if (stake < 10) return;
     if (!spendPoints(stake)) {
       setMessage({ kind: "lose", text: "No tienes puntos suficientes." });
       return;
     }
-    // Camino: 12 decisiones izq/der. slot = nº de derechas.
     let col = 0;
     const path = [{ x: CENTER, y: TOP }];
     for (let r = 1; r <= PLINKO_ROWS; r++) {
       if (Math.random() < 0.5) col++;
       path.push({ x: CENTER + (col - r / 2) * SPACING, y: TOP + r * ROW_H });
     }
-    // Último punto: centro de la ranura.
     const n = PLINKO_PAYOUTS[risk].length;
-    path.slotIndex = col;
     path.push({ x: CENTER + (col - (n - 1) / 2) * SPACING, y: SLOT_Y + 6 });
 
-    pathRef.current = path;
-    hotRef.current = -1;
-    setHot(-1);
-    setDropping(true);
-    setMessage({ kind: "info", text: "🔵 Cayendo…" });
-    startRef.current = performance.now();
-    lastTickRef.current = 0;
-    rafRef.current = requestAnimationFrame(loop);
+    ballsRef.current.push({
+      path,
+      slot: col,
+      stake,
+      risk,
+      start: performance.now(),
+      landed: false,
+      landedAt: 0,
+    });
+    Audio.click();
+    if (!rafRef.current) {
+      lastTickRef.current = 0;
+      rafRef.current = requestAnimationFrame(loop);
+    }
   }
 
-  // Redibuja al cambiar de riesgo en reposo.
   useEffect(() => {
-    if (!dropping) paint(null);
-  }, [risk, dropping]);
+    if (!rafRef.current) paint();
+  }, [risk]);
 
   return (
     <Felt title="PLINKO" icon="🔵" stake={stake} bg="#23304a,#0c1322">
@@ -192,8 +215,7 @@ export function PlinkoPage() {
             type="button"
             role="radio"
             aria-checked={risk === id}
-            disabled={dropping}
-            className={`min-h-10 rounded-md border px-3 font-cond font-bold transition disabled:opacity-40 ${
+            className={`min-h-10 rounded-md border px-3 font-cond font-bold transition ${
               risk === id
                 ? "border-signal-amber bg-signal-amber/20 text-signal-amber ring-2 ring-signal-amber"
                 : "border-white/30 bg-black/30 text-white hover:bg-black/50"
@@ -208,20 +230,21 @@ export function PlinkoPage() {
         ))}
       </div>
 
-      <StakeBar stake={stake} setStake={setStake} points={points} disabled={dropping} />
+      <StakeBar stake={stake} setStake={setStake} points={points} />
 
       <button
         type="button"
-        disabled={dropping || stake < 10 || stake > points}
+        disabled={stake < 10 || stake > points}
         className="mt-3 min-h-12 w-full rounded-md bg-signal-amber px-3 font-cond text-lg font-bold text-[#1a1200] shadow-lg shadow-black/40 hover:brightness-110 disabled:opacity-40"
         onClick={drop}
       >
-        {dropping ? "Cayendo…" : `SOLTAR BOLA · ${stake} pts`}
+        SOLTAR BOLA · {stake} pts{live > 0 ? ` · ${live} en juego` : ""}
       </button>
 
       <p className="mt-4 text-center font-cond text-xs text-white/60">
-        Suelta la bola: rebota por los clavos hasta una ranura. Los bordes pagan
-        mucho pero rara vez caen ahí; el centro paga poco. Más riesgo, más extremos.
+        Suelta tantas bolas como quieras, incluso a la vez: cada una rebota por
+        los clavos hasta una ranura. Bordes ×60, centro migajas. Más riesgo, más
+        extremos.
       </p>
     </Felt>
   );

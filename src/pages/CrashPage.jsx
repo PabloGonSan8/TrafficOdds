@@ -28,56 +28,186 @@ export function CrashPage() {
   const autoRef = useRef(0);
   const samplesRef = useRef([]);
   const lastTickRef = useRef(0);
+  const starsRef = useRef([]);
+  const lastDrawRef = useRef(0);
+  const multRef = useRef(1);
+  const flyingRef = useRef(false);
 
-  useEffect(() => () => cancelAnimationFrame(rafRef.current), []);
+  useEffect(() => {
+    // Fotograma inicial en reposo: cielo estrellado.
+    lastDrawRef.current = performance.now();
+    draw(performance.now(), false, null);
+    return () => cancelAnimationFrame(rafRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  function draw(crashedNow) {
+  function ensureStars(W, H) {
+    if (starsRef.current.length) return;
+    starsRef.current = Array.from({ length: 70 }, () => ({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      r: 0.4 + Math.random() * 1.4,
+      tw: Math.random() * Math.PI * 2,
+    }));
+  }
+
+  // expProgress: null en vuelo; 0..1 durante la explosión.
+  function draw(now, crashedNow, expProgress) {
     const cv = canvasRef.current;
     if (!cv) return;
     const ctx = cv.getContext("2d");
     const W = cv.width, H = cv.height;
-    ctx.clearRect(0, 0, W, H);
-    ctx.fillStyle = "#0a0d16";
+    ensureStars(W, H);
+
+    // Fondo espacial
+    const bg = ctx.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, "#0b1430");
+    bg.addColorStop(1, "#05070f");
+    ctx.fillStyle = bg;
     ctx.fillRect(0, 0, W, H);
 
-    const s = samplesRef.current;
-    if (s.length < 2) return;
-    const maxT = Math.max(0.5, s[s.length - 1].t);
-    const maxM = Math.max(1.2, s[s.length - 1].m);
-    const px = (p) => (p.t / maxT) * (W - 10) + 5;
-    const py = (p) => H - 8 - ((p.m - 1) / (maxM - 1)) * (H - 16);
+    // Estrellas que descienden (sensación de ascenso). Más rápidas a más multi.
+    const dt = Math.min(0.05, (now - lastDrawRef.current) / 1000);
+    lastDrawRef.current = now;
+    const speed = 18 + Math.min(160, (multRef.current - 1) * 30);
+    for (const st of starsRef.current) {
+      st.y += speed * dt;
+      if (st.y > H) {
+        st.y = 0;
+        st.x = Math.random() * W;
+      }
+      st.tw += dt * 6;
+      const a = 0.35 + 0.35 * Math.sin(st.tw);
+      ctx.fillStyle = `rgba(255,255,255,${a})`;
+      ctx.beginPath();
+      ctx.arc(st.x, st.y, st.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
-    ctx.beginPath();
-    ctx.moveTo(px(s[0]), py(s[0]));
-    for (const p of s) ctx.lineTo(px(p), py(p));
-    ctx.strokeStyle = crashedNow ? "#ef4444" : "#2ee06f";
-    ctx.lineWidth = 3;
-    ctx.stroke();
-    // relleno bajo la curva
-    ctx.lineTo(px(s[s.length - 1]), H);
-    ctx.lineTo(px(s[0]), H);
-    ctx.closePath();
-    ctx.fillStyle = crashedNow ? "rgba(239,68,68,0.15)" : "rgba(46,224,111,0.15)";
-    ctx.fill();
-    // cohete en la punta
-    const tip = s[s.length - 1];
-    ctx.font = "22px serif";
-    ctx.fillText(crashedNow ? "💥" : "🚀", px(tip) - 11, py(tip) + 8);
+    const s = samplesRef.current;
+    if (s.length >= 2) {
+      const maxT = Math.max(0.5, s[s.length - 1].t);
+      const maxM = Math.max(1.2, s[s.length - 1].m);
+      const px = (p) => (p.t / maxT) * (W - 16) + 8;
+      const py = (p) => H - 10 - ((p.m - 1) / (maxM - 1)) * (H - 24);
+
+      // Relleno bajo la curva
+      ctx.beginPath();
+      ctx.moveTo(px(s[0]), py(s[0]));
+      for (const p of s) ctx.lineTo(px(p), py(p));
+      ctx.lineTo(px(s[s.length - 1]), H);
+      ctx.lineTo(px(s[0]), H);
+      ctx.closePath();
+      const fill = ctx.createLinearGradient(0, 0, 0, H);
+      if (crashedNow) {
+        fill.addColorStop(0, "rgba(239,68,68,0.30)");
+        fill.addColorStop(1, "rgba(239,68,68,0)");
+      } else {
+        fill.addColorStop(0, "rgba(46,224,111,0.30)");
+        fill.addColorStop(1, "rgba(46,224,111,0)");
+      }
+      ctx.fillStyle = fill;
+      ctx.fill();
+
+      // Curva con degradado y brillo
+      const stroke = ctx.createLinearGradient(0, H, 0, 0);
+      stroke.addColorStop(0, "#2ee06f");
+      stroke.addColorStop(0.6, "#caa84a");
+      stroke.addColorStop(1, "#ef6a4a");
+      ctx.beginPath();
+      ctx.moveTo(px(s[0]), py(s[0]));
+      for (const p of s) ctx.lineTo(px(p), py(p));
+      ctx.strokeStyle = crashedNow ? "#ef4444" : stroke;
+      ctx.lineWidth = 3.5;
+      ctx.lineJoin = "round";
+      ctx.shadowColor = crashedNow ? "#ef4444" : "#2ee06f";
+      ctx.shadowBlur = 12;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      const tip = s[s.length - 1];
+      const tx = px(tip), ty = py(tip);
+
+      if (expProgress === null) {
+        // Llama del cohete: estela detrás de la punta.
+        const prev = s[Math.max(0, s.length - 6)];
+        const ang = Math.atan2(ty - py(prev), tx - px(prev));
+        for (let i = 1; i <= 5; i++) {
+          const fx = tx - Math.cos(ang) * i * 5;
+          const fy = ty - Math.sin(ang) * i * 5;
+          ctx.beginPath();
+          ctx.arc(fx, fy, 6 - i, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(255,${180 - i * 20},40,${0.5 - i * 0.08})`;
+          ctx.fill();
+        }
+        // Cohete rotado según la pendiente.
+        ctx.save();
+        ctx.translate(tx, ty);
+        ctx.rotate(ang + Math.PI / 4); // 🚀 apunta al NE por defecto
+        ctx.font = "24px serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("🚀", 0, 0);
+        ctx.restore();
+      } else {
+        // Explosión: anillos expansivos + destello + 💥.
+        const e = expProgress;
+        const R = 8 + e * 70;
+        ctx.strokeStyle = `rgba(255,${120 - e * 80},40,${1 - e})`;
+        ctx.lineWidth = 4 * (1 - e) + 1;
+        ctx.beginPath();
+        ctx.arc(tx, ty, R, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(tx, ty, R * 0.6, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(255,220,120,${0.8 * (1 - e)})`;
+        ctx.stroke();
+        // Destello inicial sobre todo el lienzo
+        if (e < 0.5) {
+          ctx.fillStyle = `rgba(239,68,68,${(0.5 - e) * 0.5})`;
+          ctx.fillRect(0, 0, W, H);
+        }
+        ctx.font = `${24 + e * 16}px serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("💥", tx, ty);
+      }
+    }
   }
 
   function endCrash() {
     cancelAnimationFrame(rafRef.current);
+    flyingRef.current = false;
     setMult(crashAtRef.current);
+    multRef.current = crashAtRef.current;
     setPhase("idle");
-    draw(true);
+    // Sacudida del lienzo (Web Animations API: no remonta ni borra el canvas).
+    canvasRef.current?.animate(
+      [
+        { transform: "translate(0,0)" },
+        { transform: "translate(-5px,3px)" },
+        { transform: "translate(5px,-3px)" },
+        { transform: "translate(-4px,-2px)" },
+        { transform: "translate(0,0)" },
+      ],
+      { duration: 450, easing: "ease-in-out" }
+    );
     if (!cashedRef.current) {
       setMessage({ kind: "lose", text: `💥 ¡Estalló en ×${crashAtRef.current.toFixed(2)}! Pierdes ${stakeRef.current} pts.` });
       Audio.lose();
     }
+    // Anima la explosión durante ~700 ms.
+    const t0 = performance.now();
+    const boom = (now) => {
+      const e = Math.min(1, (now - t0) / 700);
+      draw(now, true, e);
+      if (e < 1) rafRef.current = requestAnimationFrame(boom);
+    };
+    rafRef.current = requestAnimationFrame(boom);
   }
 
   function cashOut(m) {
-    if (cashedRef.current || phase !== "flying") return;
+    if (cashedRef.current || !flyingRef.current) return;
     cashedRef.current = true;
     setCashed(true);
     const payout = Math.round(stakeRef.current * m);
@@ -97,12 +227,13 @@ export function CrashPage() {
       return;
     }
     setMult(m);
+    multRef.current = m;
     if (now - lastTickRef.current > 220) {
       Audio.tick();
       lastTickRef.current = now;
     }
     if (autoRef.current > 1 && !cashedRef.current && m >= autoRef.current) cashOut(m);
-    draw(false);
+    draw(now, false, null);
     rafRef.current = requestAnimationFrame(loop);
   }
 
@@ -118,7 +249,10 @@ export function CrashPage() {
     cashedRef.current = false;
     samplesRef.current = [{ t: 0, m: 1 }];
     startRef.current = performance.now();
+    lastDrawRef.current = performance.now();
     lastTickRef.current = 0;
+    multRef.current = 1;
+    flyingRef.current = true;
     setCashed(false);
     setMult(1);
     setPhase("flying");
