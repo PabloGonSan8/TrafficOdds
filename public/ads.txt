@@ -1,0 +1,7 @@
+# ads.txt — Authorized Digital Sellers (IAB)
+# Cuando tengas tu cuenta de Google AdSense, sustituye la línea de ejemplo por
+# la tuya (la encuentras en AdSense → Sitios → ads.txt). Formato:
+#
+# google.com, pub-XXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0
+#
+# Mientras esté vacío/comentado no afecta al sitio.

@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useGameState, useGameActions } from "../context/GameContext";
+import { WatchAdButton } from "./ads/WatchAdButton";
 
 export function TopBar({ onOpenSettings }) {
   const { clock, points, streak, level, levelProgress, soundOn, musicOn } = useGameState();
@@ -72,6 +73,7 @@ export function TopBar({ onOpenSettings }) {
         >
           🎵
         </button>
+        <WatchAdButton />
         <button
           type="button"
           className="min-h-9 min-w-9 rounded-md border border-asphalt-700 bg-asphalt-800 text-base hover:bg-asphalt-700"

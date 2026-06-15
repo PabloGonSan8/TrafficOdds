@@ -1,5 +1,7 @@
 import { useRef } from "react";
 import { Link } from "react-router-dom";
+import { AdSlot } from "../components/ads/AdSlot";
+import { MON } from "../engine/monetization";
 
 const GAMES = [
   {
@@ -224,11 +226,19 @@ export function Lobby() {
         </p>
       </div>
 
-      {SECTIONS.map((sec) => {
+      {SECTIONS.map((sec, i) => {
         const list = GAMES.filter((g) => g.cat === sec.cat);
         if (list.length === 0) return null;
-        return <CarouselSection key={sec.cat} sec={sec} list={list} />;
+        return (
+          <div key={sec.cat}>
+            <CarouselSection sec={sec} list={list} />
+            {/* Anuncio tras la primera sección */}
+            {i === 0 ? <AdSlot slot={MON.slots.lobby} /> : null}
+          </div>
+        );
       })}
+
+      <AdSlot slot={MON.slots.lobby} minHeight={90} />
     </main>
   );
 }
