@@ -10,6 +10,7 @@ import { TrafficPage } from "./pages/TrafficPage";
 import { RoulettePage } from "./pages/RoulettePage";
 import { SlotsPage } from "./pages/SlotsPage";
 import { BlackjackPage } from "./pages/BlackjackPage";
+import { BaccaratPage } from "./pages/BaccaratPage";
 import { CoinflipPage } from "./pages/CoinflipPage";
 import { DicePage } from "./pages/DicePage";
 import { HigherLowerPage } from "./pages/HigherLowerPage";
@@ -38,6 +39,7 @@ function AppShell() {
         <Route path="/ruleta" element={<RoulettePage />} />
         <Route path="/tragaperras" element={<SlotsPage />} />
         <Route path="/blackjack" element={<BlackjackPage />} />
+        <Route path="/baccarat" element={<BaccaratPage />} />
         <Route path="/doble-o-nada" element={<CoinflipPage />} />
         <Route path="/dados" element={<DicePage />} />
         <Route path="/mayor-menor" element={<HigherLowerPage />} />

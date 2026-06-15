@@ -61,11 +61,17 @@ export function RacePage() {
       }
     }
 
-    // Vehículos
+    // Vehículos: los emoji miran a la izquierda, así que se voltean en
+    // horizontal para que apunten hacia la meta (sentido de la marcha).
     ctx.font = "26px serif";
     ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
     RACERS.forEach((r, i) => {
-      ctx.fillText(r.emoji, posRef.current[i] - 13, LANE_Y[i]);
+      ctx.save();
+      ctx.translate(posRef.current[i], LANE_Y[i]);
+      ctx.scale(-1, 1);
+      ctx.fillText(r.emoji, 0, 0);
+      ctx.restore();
     });
   }
 

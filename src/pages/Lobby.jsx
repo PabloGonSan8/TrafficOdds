@@ -53,6 +53,14 @@ const GAMES = [
     color: "#0ea5e9",
   },
   {
+    to: "/baccarat",
+    icon: "🀄",
+    name: "Baccarat",
+    desc: "Punto Banco: apuesta a Player, Banker o Tie. Reglas oficiales de casino.",
+    cat: "Casino",
+    color: "#dc2626",
+  },
+  {
     to: "/tragaperras",
     icon: "🎰",
     name: "Tragaperras",

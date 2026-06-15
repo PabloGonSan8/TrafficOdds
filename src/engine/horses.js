@@ -66,7 +66,9 @@ function probs(strengths, sims = 6000) {
 const clampOdds = (o, max = 99) => Math.min(max, Math.max(1.1, roundOdds(o)));
 
 export function buildRaceCard() {
-  const strengths = HORSE_BASES.map(() => 1 + Math.random() * 1.4);
+  // Cada caballo recibe una "forma" aleatoria distinta en cada carrera: de ahí
+  // salen favoritos y outsiders, y las probabilidades cambian cada parrilla.
+  const strengths = HORSE_BASES.map(() => 0.6 + Math.random() * 1.8);
   const { win, place } = probs(strengths);
   // Suelo en las probabilidades: evita cuotas infinitas / apuestas imposibles.
   const winP = win.map((w) => Math.max(w, 0.005));

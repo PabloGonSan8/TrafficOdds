@@ -80,6 +80,13 @@ export function HorseRacePage() {
     [card]
   );
 
+  // Clasificación ordenada: en directo (dorsales en `live`) o final (índices en `result`).
+  const standings = useMemo(() => {
+    if (live) return live.map((num) => card.horses.find((h) => h.num === num));
+    if (result) return result.map((idx) => card.horses[idx]);
+    return null;
+  }, [live, result, card]);
+
   useEffect(() => { paintStatic(); /* eslint-disable-next-line */ }, [card]);
   useEffect(() => () => cancelAnimationFrame(rafRef.current), []);
 
@@ -268,15 +275,29 @@ export function HorseRacePage() {
         })}
       </svg>
 
-      {/* Marcador en carrera */}
-      {live ? (
-        <div className="mt-2 flex items-center justify-center gap-1.5 font-cond text-xs text-white/80">
-          <span className="text-white/50">En carrera:</span>
-          {live.map((num, k) => (
-            <span key={num} className={`rounded px-1.5 py-0.5 font-bold ${k === 0 ? "bg-signal-amber/30 text-signal-amber" : "bg-black/30"}`}>
-              {k + 1}º·{num}
-            </span>
-          ))}
+      {/* Clasificación: en directo durante la carrera y final al terminar. */}
+      {standings ? (
+        <div className="mt-2 rounded-lg border border-white/15 bg-black/40 p-2">
+          <div className="mb-1 text-center font-cond text-xs font-bold uppercase tracking-wider text-white/50">
+            {racing ? "🏁 Clasificación en directo" : "🏁 Resultado final"}
+          </div>
+          <ol className="grid grid-cols-2 gap-1 sm:grid-cols-4">
+            {standings.map((h, k) => {
+              const mine = sel.includes(h.idx);
+              return (
+                <li
+                  key={h.num}
+                  className={`flex items-center gap-1.5 rounded px-1.5 py-1 font-cond text-sm font-bold ${
+                    k === 0 ? "bg-signal-amber/25 text-signal-amber" : "bg-white/5 text-white/85"
+                  } ${mine ? "ring-1 ring-signal-amber" : ""}`}
+                >
+                  <span className="w-5 shrink-0 text-center text-white/60">{k + 1}º</span>
+                  <span className="inline-block h-3 w-3 shrink-0 rounded-full" style={{ background: h.color }} />
+                  <span className="truncate">{h.num} {h.name}</span>
+                </li>
+              );
+            })}
+          </ol>
         </div>
       ) : null}
 
@@ -356,7 +377,7 @@ export function HorseRacePage() {
                   {h.name}{i === favorite ? " ★" : ""}
                 </span>
                 <span className="block text-xs text-white/60">
-                  Gana ×{h.winOdds} · Col ×{h.placeOdds}
+                  {Math.round(h.winP * 100)}% · ×{h.winOdds} gana · ×{h.placeOdds} col
                 </span>
               </span>
               {need > 1 && order ? (
