@@ -23,84 +23,174 @@ const CHIPS = [
   { value: 250, bg: "#f97316", text: "#1a0a00", ring: "#c2410c" },
 ];
 
-const SECTOR_FILL = { green: "#0d7a3a", red: "#c0392b", black: "#1b1f26" };
+const SECTOR_FILL = { green: "#0a7d3c", red: "#c0392b", black: "#15181d" };
 
 // La bolita se describe con ángulo absoluto y distancia como fracción del radio.
-const BALL_RIM = 0.96;    // girando por el borde
-const BALL_POCKET = 0.74; // reposando en la casilla
+const BALL_RIM = 0.9;     // girando por la pista exterior
+const BALL_POCKET = 0.62; // reposando dentro de la casilla
 
 // Física de la mesa.
 const IDLE_SPEED = 0.45;     // rad/s: velocidad de crucero perpetua de la rueda
 const WHEEL_FRICTION = 0.5;  // retorno suave hacia la velocidad base
-const BALL_FRICTION = 0.5;
-const DROP_SPEED = 1.4;      // rad/s: por debajo, la bola cae del borde
-const FALL_MS = 750;         // espiral desde el borde hasta los deflectores
-const FALL_FRICTION = 1.3;   // la bola pierde fuerza mientras cae
-const BALL_DEFLECT = 0.8;    // radio de los deflectores (rombos)
+
+// Giro: una sola fase. La bola decelera en el marco de la rueda hasta parar
+// EXACTA en la casilla ganadora. Sin muelles ni transiciones → sin saltos.
+const SPIN_MS = 6500;        // duración del giro
+const REL_TURNS = 4;         // vueltas de la bola respecto a la rueda
+const DROP_AT = 0.62;        // fracción del giro en que la bola cae a la casilla
+
+const DEFLECTORS = 8;        // rombos metálicos repartidos por el cuenco
+
+const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
+const smoothstep = (t) => t * t * (3 - 2 * t);
 
 function drawWheel(canvas, rotation, ball) {
   const ctx = canvas.getContext("2d");
   const size = canvas.width;
   const cx = size / 2;
   const cy = size / 2;
-  const radius = size / 2 - 8;
+  const R = size / 2 - 4;
   ctx.clearRect(0, 0, size, size);
 
-  // Madera exterior
+  // --- Cuenco de madera exterior (fijo) ---
+  const bowl = ctx.createRadialGradient(cx, cy, R * 0.55, cx, cy, R);
+  bowl.addColorStop(0, "#7a4a22");
+  bowl.addColorStop(1, "#3d2410");
   ctx.beginPath();
-  ctx.arc(cx, cy, radius + 6, 0, Math.PI * 2);
-  ctx.fillStyle = "#5d3a1a";
+  ctx.arc(cx, cy, R, 0, Math.PI * 2);
+  ctx.fillStyle = bowl;
   ctx.fill();
 
+  // --- Pista de la bola (anillo lacado fijo donde rueda la bola) ---
+  const trackOuter = R * 0.96;
+  const trackInner = R * 0.83;
+  const track = ctx.createRadialGradient(cx, cy, trackInner, cx, cy, trackOuter);
+  track.addColorStop(0, "#1c0f08");
+  track.addColorStop(0.5, "#6b4226");
+  track.addColorStop(1, "#241308");
+  ctx.beginPath();
+  ctx.arc(cx, cy, trackOuter, 0, Math.PI * 2);
+  ctx.arc(cx, cy, trackInner, 0, Math.PI * 2, true);
+  ctx.fillStyle = track;
+  ctx.fill("evenodd");
+
+  // --- Deflectores: rombos metálicos repartidos por el cuenco (fijos) ---
+  for (let i = 0; i < DEFLECTORS; i++) {
+    const a = (i / DEFLECTORS) * Math.PI * 2 - Math.PI / 2;
+    const dr = R * 0.81;
+    const dx = cx + Math.cos(a) * dr;
+    const dy = cy + Math.sin(a) * dr;
+    const s = R * 0.035;
+    ctx.save();
+    ctx.translate(dx, dy);
+    ctx.rotate(a);
+    ctx.beginPath();
+    ctx.moveTo(0, -s);
+    ctx.lineTo(s * 0.7, 0);
+    ctx.lineTo(0, s);
+    ctx.lineTo(-s * 0.7, 0);
+    ctx.closePath();
+    const g = ctx.createLinearGradient(-s, -s, s, s);
+    g.addColorStop(0, "#ececf2");
+    g.addColorStop(0.5, "#9a9aa2");
+    g.addColorStop(1, "#54545c");
+    ctx.fillStyle = g;
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // --- Cabeza giratoria: casillas con números, separadas por frets metálicos ---
+  const headOuter = R * 0.82;
+  const headInner = R * 0.5;
   for (let i = 0; i < WHEEL_ORDER.length; i++) {
     const n = WHEEL_ORDER[i];
     const start = rotation + i * SECTOR - Math.PI / 2;
+    const end = start + SECTOR;
     ctx.beginPath();
-    ctx.moveTo(cx, cy);
-    ctx.arc(cx, cy, radius, start, start + SECTOR);
+    ctx.arc(cx, cy, headOuter, start, end);
+    ctx.arc(cx, cy, headInner, end, start, true);
     ctx.closePath();
     ctx.fillStyle = SECTOR_FILL[colorOf(n)];
     ctx.fill();
-    ctx.strokeStyle = "#caa84a";
-    ctx.lineWidth = 1;
+
+    // fret (separador plateado) en el borde de cada casilla
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(start) * headInner, cy + Math.sin(start) * headInner);
+    ctx.lineTo(cx + Math.cos(start) * headOuter, cy + Math.sin(start) * headOuter);
+    ctx.strokeStyle = "#c8ccd2";
+    ctx.lineWidth = 1.5;
     ctx.stroke();
 
+    // número orientado hacia el centro
     const mid = start + SECTOR / 2;
     ctx.save();
-    ctx.translate(cx + Math.cos(mid) * (radius - 18), cy + Math.sin(mid) * (radius - 18));
+    ctx.translate(cx + Math.cos(mid) * (headOuter - R * 0.07), cy + Math.sin(mid) * (headOuter - R * 0.07));
     ctx.rotate(mid + Math.PI / 2);
-    ctx.fillStyle = "#eef0f3";
-    ctx.font = `bold ${Math.round(size / 26)}px Barlow, sans-serif`;
+    ctx.fillStyle = "#f4f5f7";
+    ctx.font = `bold ${Math.round(size / 30)}px Barlow, sans-serif`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(String(n), 0, 0);
     ctx.restore();
   }
 
-  // Centro dorado
+  // aros plateados que enmarcan las casillas
+  for (const rr of [headOuter, headInner]) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, rr, 0, Math.PI * 2);
+    ctx.strokeStyle = "#9aa0a8";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+  }
+
+  // --- Cono central dorado (turret) ---
+  const cone = ctx.createRadialGradient(
+    cx - headInner * 0.3, cy - headInner * 0.3, 2, cx, cy, headInner
+  );
+  cone.addColorStop(0, "#f6df97");
+  cone.addColorStop(0.55, "#caa84a");
+  cone.addColorStop(1, "#6f5a1e");
   ctx.beginPath();
-  ctx.arc(cx, cy, radius * 0.42, 0, Math.PI * 2);
-  ctx.fillStyle = "#14171c";
+  ctx.arc(cx, cy, headInner, 0, Math.PI * 2);
+  ctx.fillStyle = cone;
   ctx.fill();
-  ctx.strokeStyle = "#caa84a";
-  ctx.lineWidth = 4;
-  ctx.stroke();
-  ctx.font = `${Math.round(size / 11)}px serif`;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText("🎡", cx, cy);
+  ctx.strokeStyle = "rgba(70,50,15,0.5)";
+  ctx.lineWidth = 2;
+  for (const rr of [0.78, 0.52]) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, headInner * rr, 0, Math.PI * 2);
+    ctx.stroke();
+  }
 
-  ctx.beginPath();
-  ctx.arc(cx, cy, radius + 3, 0, Math.PI * 2);
-  ctx.strokeStyle = "#caa84a";
+  // brazos del turret que giran con la rueda
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(rotation);
+  ctx.strokeStyle = "rgba(110,82,28,0.6)";
   ctx.lineWidth = 3;
+  for (let i = 0; i < 4; i++) {
+    ctx.rotate(Math.PI / 2);
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(0, -headInner * 0.72);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // perilla central
+  ctx.beginPath();
+  ctx.arc(cx, cy, headInner * 0.18, 0, Math.PI * 2);
+  ctx.fillStyle = "#ecc869";
+  ctx.fill();
+  ctx.strokeStyle = "#6f5a1e";
+  ctx.lineWidth = 2;
   ctx.stroke();
 
-  // Bolita de marfil
+  // --- Bolita de marfil ---
   if (ball) {
-    const bx = cx + Math.cos(ball.angle) * radius * ball.f;
-    const by = cy + Math.sin(ball.angle) * radius * ball.f;
-    const r = Math.max(5, size / 52);
+    const bx = cx + Math.cos(ball.angle) * R * ball.f;
+    const by = cy + Math.sin(ball.angle) * R * ball.f;
+    const r = Math.max(5, size / 50);
     const sheen = ctx.createRadialGradient(bx - r / 3, by - r / 3, 1, bx, by, r);
     sheen.addColorStop(0, "#ffffff");
     sheen.addColorStop(1, "#cfc9bd");
@@ -108,15 +198,12 @@ function drawWheel(canvas, rotation, ball) {
     ctx.arc(bx, by, r, 0, Math.PI * 2);
     ctx.fillStyle = sheen;
     ctx.shadowColor = "rgba(0,0,0,0.6)";
-    ctx.shadowBlur = 4;
+    ctx.shadowBlur = 5;
     ctx.fill();
     ctx.shadowBlur = 0;
   }
 }
 
-function easeOutCubic(t) {
-  return 1 - Math.pow(1 - t, 3);
-}
 
 /** Ficha apilada sobre una casilla con la cantidad total. */
 function ChipBadge({ amount }) {
@@ -414,80 +501,27 @@ export function RoulettePage() {
       if (sim === null) {
         // Bola encajada: viaja con la rueda en su casilla.
         ball = { angle: rotationRef.current + ballOffsetRef.current, f: BALL_POCKET };
-      } else if (sim.phase === "rim") {
-        sim.ballAngle += sim.ballVel * dt;
-        sim.ballVel *= Math.exp(-BALL_FRICTION * dt);
-        ball = { angle: sim.ballAngle, f: BALL_RIM };
-
-        // Tick al sobrevolar cada casilla.
-        const rel = Math.floor((sim.ballAngle - rotationRef.current) / SECTOR);
-        if (sim.lastSector !== null && rel !== sim.lastSector) Audio.tick();
-        sim.lastSector = rel;
-
-        if (Math.abs(sim.ballVel) < DROP_SPEED) {
-          sim.phase = "fall";
-          sim.fallStart = now;
-        }
-      } else if (sim.phase === "fall") {
-        // fall: la bola abandona el borde en espiral y golpea los deflectores.
-        // Conserva su propia velocidad: nada tira de ella hacia el resultado.
-        const p = Math.min(1, (now - sim.fallStart) / FALL_MS);
-        sim.ballVel *= Math.exp(-FALL_FRICTION * dt);
-        sim.ballAngle += sim.ballVel * dt;
-
-        // Golpes contra los rombos: roban energía y desvían un poco.
-        for (const bp of [0.45, 0.7, 0.9]) {
-          if (p >= bp && !sim.bouncesPlayed.has(bp)) {
-            sim.bouncesPlayed.add(bp);
-            sim.ballVel *= 0.6;
-            sim.ballVel += (Math.random() - 0.5) * 0.5;
-            Audio.tick();
-          }
-        }
-
-        const bounce = Math.abs(Math.sin(p * Math.PI * 3)) * (1 - p) * 0.05;
-        ball = {
-          angle: sim.ballAngle,
-          f: BALL_RIM + (BALL_DEFLECT - BALL_RIM) * easeOutCubic(p) + bounce,
-        };
-
-        if (p >= 1) {
-          // captura: entra en la zona de casillas. El destino se alcanza
-          // siguiendo la dirección del movimiento relativo actual, con la
-          // duración ajustada para que la velocidad no dé un salto visible.
-          const twoPi = Math.PI * 2;
-          const rel0 = sim.ballAngle - rotationRef.current;
-          const relVel = sim.ballVel - wheelVelRef.current;
-          let dist = (((sim.targetOffset - rel0) % twoPi) + twoPi) % twoPi;
-          if (relVel < 0) dist -= twoPi;
-          const dur = Math.min(1.5, Math.max(0.45, (3 * dist) / (relVel || -1)));
-          sim.phase = "capture";
-          sim.captureStart = now;
-          sim.captureDur = dur * 1000;
-          sim.rel0 = rel0;
-          sim.relDist = dist;
-        }
       } else {
-        // capture: la bola salta entre casillas, la rueda la arrastra y encaja.
-        const p = Math.min(1, (now - sim.captureStart) / sim.captureDur);
-        const rel = sim.rel0 + sim.relDist * easeOutCubic(p);
-        const hop = Math.abs(Math.sin(p * Math.PI * 2)) * (1 - p) * 0.035;
-        ball = {
-          angle: rotationRef.current + rel,
-          f:
-            BALL_DEFLECT +
-            (BALL_POCKET - BALL_DEFLECT) * easeOutCubic(Math.min(1, p * 1.6)) +
-            hop,
-        };
+        // Giro de una sola fase, en el marco de la rueda. El ángulo relativo
+        // va de relStart a relFinal con easeOutQuart: arranca rápido (flick del
+        // crupier) y decelera hasta velocidad CERO justo en la casilla. La
+        // posición es una función suave del tiempo y termina exactamente donde
+        // reposará la bola → traspaso a "encajada" continuo, sin ningún salto.
+        const p = Math.min(1, (now - sim.start) / SPIN_MS);
+        const rel = sim.relStart + sim.delta * easeOutCubic(p);
 
-        // Tic del último saltito al encajar en la casilla.
-        if (p >= 0.55 && !sim.bouncesPlayed.has("lock")) {
-          sim.bouncesPlayed.add("lock");
-          Audio.tick();
-        }
+        // Profundidad: en la pista mientras gira; cae a la casilla al final.
+        const fp = p < DROP_AT ? 0 : smoothstep((p - DROP_AT) / (1 - DROP_AT));
+        const f = BALL_RIM + (BALL_POCKET - BALL_RIM) * fp;
+        ball = { angle: rotationRef.current + rel, f };
+
+        // Tic al sobrevolar cada casilla (se espacia solo al decelerar).
+        const sector = Math.floor(rel / SECTOR);
+        if (sim.lastSector !== null && sector !== sim.lastSector) Audio.tick();
+        sim.lastSector = sector;
 
         if (p >= 1) {
-          ballOffsetRef.current = sim.targetOffset;
+          ballOffsetRef.current = sim.relStart + sim.delta;
           simRef.current = null;
           resolveRef.current(sim);
         }
@@ -589,17 +623,24 @@ export function RoulettePage() {
     const result = spin();
     const idx = WHEEL_ORDER.indexOf(result);
 
-    // Impulso del crupier a la rueda + lanzamiento de la bola en contra.
+    // Impulso del crupier a la rueda; vuelve sola a IDLE por fricción.
     wheelVelRef.current = 2.0 + Math.random() * 0.8;
+
+    // Ángulo relativo (en el marco de la rueda) donde reposará la bola.
+    const targetOffset = idx * SECTOR + SECTOR / 2 - Math.PI / 2;
+    const relStart = ballOffsetRef.current;
+    // La bola gira "hacia atrás" respecto a la rueda REL_TURNS vueltas y para
+    // exacta en la casilla: se elige la representación más cercana por debajo.
+    const twoPi = Math.PI * 2;
+    let relFinal = targetOffset;
+    const floor = relStart - twoPi * REL_TURNS;
+    while (relFinal > floor) relFinal -= twoPi;
+
     simRef.current = {
-      phase: "rim",
-      ballVel: -(9 + Math.random() * 2),
-      ballAngle: rotationRef.current + ballOffsetRef.current,
-      dropStart: 0,
+      start: performance.now(),
+      relStart,
+      delta: relFinal - relStart,
       lastSector: null,
-      bouncesPlayed: new Set(),
-      // Casilla ganadora relativa a la rueda: la bola encajará ahí.
-      targetOffset: idx * SECTOR + SECTOR / 2 - Math.PI / 2,
       result,
       placedBets: Object.values(bets),
       staked: totalBet,

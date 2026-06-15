@@ -9,6 +9,15 @@ import { TrafficPage } from "./pages/TrafficPage";
 import { RoulettePage } from "./pages/RoulettePage";
 import { SlotsPage } from "./pages/SlotsPage";
 import { BlackjackPage } from "./pages/BlackjackPage";
+import { CoinflipPage } from "./pages/CoinflipPage";
+import { DicePage } from "./pages/DicePage";
+import { HigherLowerPage } from "./pages/HigherLowerPage";
+import { ScratchPage } from "./pages/ScratchPage";
+import { CrashPage } from "./pages/CrashPage";
+import { MinesPage } from "./pages/MinesPage";
+import { PlinkoPage } from "./pages/PlinkoPage";
+import { WheelPage } from "./pages/WheelPage";
+import { RacePage } from "./pages/RacePage";
 
 function AppShell() {
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -23,6 +32,15 @@ function AppShell() {
         <Route path="/ruleta" element={<RoulettePage />} />
         <Route path="/tragaperras" element={<SlotsPage />} />
         <Route path="/blackjack" element={<BlackjackPage />} />
+        <Route path="/doble-o-nada" element={<CoinflipPage />} />
+        <Route path="/dados" element={<DicePage />} />
+        <Route path="/mayor-menor" element={<HigherLowerPage />} />
+        <Route path="/rasca" element={<ScratchPage />} />
+        <Route path="/crash" element={<CrashPage />} />
+        <Route path="/minas" element={<MinesPage />} />
+        <Route path="/plinko" element={<PlinkoPage />} />
+        <Route path="/rueda-fortuna" element={<WheelPage />} />
+        <Route path="/carrera" element={<RacePage />} />
         <Route path="*" element={<Lobby />} />
       </Routes>
 

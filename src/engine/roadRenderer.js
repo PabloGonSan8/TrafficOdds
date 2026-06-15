@@ -36,9 +36,16 @@ export class RoadRenderer {
 
   spawn(typeId) {
     const def = getVehicleDef(typeId);
+    if (!def) return; // tipo desconocido: no romper el bucle
     const lane = Math.floor(Math.random() * LANES_Y.length);
     const leftToRight = lane < 2;
     const speed = def.speed[0] + Math.random() * (def.speed[1] - def.speed[0]);
+    // Si está lleno, descarta primero los que ya salieron de pantalla; solo si
+    // aún sobra se quita el más antiguo. Así no desaparece un coche visible.
+    if (this.vehicles.length >= MAX_SPRITES) {
+      this.vehicles = this.vehicles.filter((v) => v.x > -60 && v.x < this.W + 60);
+      if (this.vehicles.length >= MAX_SPRITES) this.vehicles.shift();
+    }
     this.vehicles.push({
       emoji: def.emoji,
       x: leftToRight ? -40 : this.W + 40,
@@ -47,7 +54,6 @@ export class RoadRenderer {
       flip: !leftToRight,
       size: typeId === "camion" || typeId === "autobus" ? 30 : 24,
     });
-    if (this.vehicles.length > MAX_SPRITES) this.vehicles.shift();
   }
 
   draw(dtReal, ambient = { hour: 12, raining: false }) {
@@ -97,9 +103,10 @@ export class RoadRenderer {
       ctx.fillRect(0, 0, W, H);
     }
 
-    // Vehículos + faros
+    // Vehículos + faros. Se mueven y dibujan; el descarte de los que salen de
+    // pantalla se hace DESPUÉS de mover (si no, uno en el borde podía quitarse
+    // estando aún visible).
     ctx.textBaseline = "middle";
-    this.vehicles = this.vehicles.filter((v) => v.x > -60 && v.x < W + 60);
     for (const v of this.vehicles) {
       v.x += v.vx * dtReal;
 
@@ -124,6 +131,8 @@ export class RoadRenderer {
       ctx.fillText(v.emoji, -v.size / 2, 0);
       ctx.restore();
     }
+    // Descarta los que ya cruzaron del todo.
+    this.vehicles = this.vehicles.filter((v) => v.x > -60 && v.x < W + 60);
 
     // Lluvia (evento activo)
     if (ambient.raining) {

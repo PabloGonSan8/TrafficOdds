@@ -321,12 +321,12 @@ export function useGame() {
     }
 
     let rafId;
-    let lastTs = performance.now();
+    let logicTs = performance.now();  // último avance de la lógica (reloj real)
+    let renderTs = performance.now(); // último frame dibujado
 
-    function loop(ts) {
-      const dt = Math.min(0.1, (ts - lastTs) / 1000);
-      lastTs = ts;
-
+    // Lógica del juego: reloj virtual, fases, conteo de tráfico y resolución.
+    // Independiente del render → puede avanzar aunque no se dibuje nada.
+    function stepLogic(dt, live) {
       Simulation.tickClock(dt);
       setClock(Simulation.getClockString()); // mismo string → React no re-renderiza
 
@@ -337,7 +337,11 @@ export function useGame() {
       if (phaseRef.current === "running" && round && !round.finished) {
         const wasRevealed = round.eventRevealed;
         const spawned = Simulation.tickRound(round, dt);
-        if (rendererRef.current) {
+        // Los sprites solo se generan en pasos "en vivo" y con la pestaña
+        // visible. Durante un catch-up (volver de minimizado) o estando oculta
+        // NO se visualizan, para no soltar de golpe cientos de coches; el
+        // conteo de la ronda sí avanza, así las apuestas se resuelven justas.
+        if (rendererRef.current && live && !document.hidden) {
           for (const t of spawned) rendererRef.current.spawn(t);
         }
         if (spawned.length > 0) setCounts({ ...round.counts });
@@ -348,8 +352,35 @@ export function useGame() {
       }
 
       if (remainingRef.current <= 0) advancePhase();
+    }
 
+    // Avanza la lógica según el tiempo de reloj REAL transcurrido, troceado en
+    // pasos pequeños para que un salto grande (volver de minimizado) no dispare
+    // una avalancha. El total se acota para no colgarse tras pausas largas.
+    function advanceLogic(now) {
+      let elapsed = (now - logicTs) / 1000;
+      logicTs = now;
+      if (elapsed <= 0) return;
+      // "En vivo" = frame normal de pestaña visible. Si el salto es grande
+      // (reanudar tras minimizar), es catch-up: avanza la lógica pero sin
+      // visualizar spawns para no inundar la carretera.
+      const live = elapsed < 0.25;
+      elapsed = Math.min(elapsed, 30);
+      while (elapsed > 0) {
+        const step = Math.min(0.1, elapsed);
+        stepLogic(step, live);
+        elapsed -= step;
+      }
+    }
+
+    // Render: rAF se pausa al minimizar, así que solo dibuja. La lógica la
+    // arrastra advanceLogic con tiempo real (correcto también al reanudar).
+    function loop(ts) {
+      advanceLogic(ts);
+      const dt = Math.min(0.1, (ts - renderTs) / 1000);
+      renderTs = ts;
       if (rendererRef.current) {
+        const round = roundRef.current;
         const raining =
           phaseRef.current === "running" &&
           round?.event?.id === "lluvia" &&
@@ -359,10 +390,20 @@ export function useGame() {
       rafId = requestAnimationFrame(loop);
     }
 
+    // Con la ventana oculta rAF no corre: este intervalo mantiene viva la
+    // lógica. setInterval sigue disparando minimizado (acotado a ~1s por el
+    // navegador). Comparte logicTs con rAF, así no hay doble conteo.
+    const bgTimer = setInterval(() => {
+      if (document.hidden) advanceLogic(performance.now());
+    }, 250);
+
     startBettingPhase();
+    logicTs = performance.now();
+    renderTs = performance.now();
     rafId = requestAnimationFrame(loop);
     return () => {
       cancelAnimationFrame(rafId);
+      clearInterval(bgTimer);
       window.removeEventListener("pointerdown", startMusicOnGesture);
       window.removeEventListener("keydown", startMusicOnGesture);
     };

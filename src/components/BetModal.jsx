@@ -62,7 +62,7 @@ export function BetModal({ market, onClose }) {
             type="number"
             id="bet-amount"
             min="10"
-            step="10"
+            step="1"
             max={points}
             inputMode="numeric"
             autoFocus
