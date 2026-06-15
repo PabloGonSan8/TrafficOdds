@@ -21,6 +21,9 @@ import { WheelPage } from "./pages/WheelPage";
 import { RacePage } from "./pages/RacePage";
 import { GaritoPage } from "./pages/GaritoPage";
 import { HorseRacePage } from "./pages/HorseRacePage";
+import { PrivacyPage } from "./pages/PrivacyPage";
+import { ContactPage } from "./pages/ContactPage";
+import { CookieConsent } from "./components/CookieConsent";
 
 function AppShell() {
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -46,6 +49,8 @@ function AppShell() {
         <Route path="/carrera" element={<RacePage />} />
         <Route path="/garito" element={<GaritoPage />} />
         <Route path="/caballos" element={<HorseRacePage />} />
+        <Route path="/privacidad" element={<PrivacyPage />} />
+        <Route path="/contacto" element={<ContactPage />} />
         <Route path="*" element={<Lobby />} />
       </Routes>
 
@@ -53,6 +58,7 @@ function AppShell() {
 
       {settingsOpen ? <SettingsModal onClose={() => setSettingsOpen(false)} /> : null}
       <Toasts />
+      <CookieConsent />
     </>
   );
 }

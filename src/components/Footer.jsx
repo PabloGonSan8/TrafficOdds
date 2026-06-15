@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { MON, supportEnabled } from "../engine/monetization";
 
 /** Footer global: crédito, donaciones y enlace al perfil de GitHub del autor. */
@@ -33,6 +34,11 @@ export function Footer() {
             PabloGonSan8
           </a>
         </div>
+
+        <nav className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 font-cond text-xs text-dim">
+          <Link to="/privacidad" className="hover:text-signal-amber">Privacidad</Link>
+          <Link to="/contacto" className="hover:text-signal-amber">Contacto</Link>
+        </nav>
       </div>
     </footer>
   );
