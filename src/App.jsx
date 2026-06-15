@@ -19,6 +19,8 @@ import { MinesPage } from "./pages/MinesPage";
 import { PlinkoPage } from "./pages/PlinkoPage";
 import { WheelPage } from "./pages/WheelPage";
 import { RacePage } from "./pages/RacePage";
+import { GaritoPage } from "./pages/GaritoPage";
+import { HorseRacePage } from "./pages/HorseRacePage";
 
 function AppShell() {
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -42,6 +44,8 @@ function AppShell() {
         <Route path="/plinko" element={<PlinkoPage />} />
         <Route path="/rueda-fortuna" element={<WheelPage />} />
         <Route path="/carrera" element={<RacePage />} />
+        <Route path="/garito" element={<GaritoPage />} />
+        <Route path="/caballos" element={<HorseRacePage />} />
         <Route path="*" element={<Lobby />} />
       </Routes>
 

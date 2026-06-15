@@ -8,6 +8,13 @@ import * as Audio from "../engine/audio";
 
 const LAMBDA = 0.28; // ritmo de crecimiento del multiplicador (×2 ≈ 2,5 s)
 
+function histColor(m) {
+  if (m < 1.3) return "#ef4444";
+  if (m < 2) return "#f59e0b";
+  if (m < 5) return "#2ee06f";
+  return "#a855f7";
+}
+
 export function CrashPage() {
   const { points } = useGameState();
   const { spendPoints, awardPoints } = useGameActions();
@@ -18,6 +25,7 @@ export function CrashPage() {
   const [mult, setMult] = useState(1);
   const [cashed, setCashed] = useState(false);
   const [message, setMessage] = useState(null);
+  const [history, setHistory] = useState([]);
 
   const canvasRef = useRef(null);
   const rafRef = useRef(null);
@@ -28,7 +36,9 @@ export function CrashPage() {
   const autoRef = useRef(0);
   const samplesRef = useRef([]);
   const lastTickRef = useRef(0);
-  const starsRef = useRef([]);
+  const starsFarRef = useRef([]);
+  const starsNearRef = useRef([]);
+  const debrisRef = useRef([]);
   const lastDrawRef = useRef(0);
   const multRef = useRef(1);
   const flyingRef = useRef(false);
@@ -42,11 +52,17 @@ export function CrashPage() {
   }, []);
 
   function ensureStars(W, H) {
-    if (starsRef.current.length) return;
-    starsRef.current = Array.from({ length: 70 }, () => ({
+    if (starsFarRef.current.length) return;
+    starsFarRef.current = Array.from({ length: 55 }, () => ({
       x: Math.random() * W,
       y: Math.random() * H,
-      r: 0.4 + Math.random() * 1.4,
+      r: 0.3 + Math.random() * 0.9,
+      tw: Math.random() * Math.PI * 2,
+    }));
+    starsNearRef.current = Array.from({ length: 35 }, () => ({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      r: 0.9 + Math.random() * 1.6,
       tw: Math.random() * Math.PI * 2,
     }));
   }
@@ -59,25 +75,43 @@ export function CrashPage() {
     const W = cv.width, H = cv.height;
     ensureStars(W, H);
 
-    // Fondo espacial
+    // Fondo espacial profundo.
     const bg = ctx.createLinearGradient(0, 0, 0, H);
     bg.addColorStop(0, "#0b1430");
-    bg.addColorStop(1, "#05070f");
+    bg.addColorStop(0.55, "#0a0f24");
+    bg.addColorStop(1, "#04060e");
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, W, H);
 
-    // Estrellas que descienden (sensación de ascenso). Más rápidas a más multi.
+    // Nebulosa que se enciende según sube el multiplicador.
+    const heat = Math.min(1, (multRef.current - 1) / 8);
+    if (heat > 0.01) {
+      const neb = ctx.createRadialGradient(W * 0.5, H * 0.78, 10, W * 0.5, H * 0.78, W * 0.7);
+      neb.addColorStop(0, `rgba(${crashedNow ? "239,68,68" : "120,80,220"},${0.18 * heat})`);
+      neb.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = neb;
+      ctx.fillRect(0, 0, W, H);
+    }
+
     const dt = Math.min(0.05, (now - lastDrawRef.current) / 1000);
     lastDrawRef.current = now;
-    const speed = 18 + Math.min(160, (multRef.current - 1) * 30);
-    for (const st of starsRef.current) {
-      st.y += speed * dt;
-      if (st.y > H) {
-        st.y = 0;
-        st.x = Math.random() * W;
-      }
-      st.tw += dt * 6;
-      const a = 0.35 + 0.35 * Math.sin(st.tw);
+    const base = 14 + Math.min(150, (multRef.current - 1) * 28);
+
+    // Capa lejana (lenta) + capa cercana (rápida) → parallax de ascenso.
+    for (const st of starsFarRef.current) {
+      st.y += base * 0.4 * dt;
+      if (st.y > H) { st.y = 0; st.x = Math.random() * W; }
+      st.tw += dt * 5;
+      ctx.fillStyle = `rgba(180,200,255,${0.25 + 0.25 * Math.sin(st.tw)})`;
+      ctx.beginPath();
+      ctx.arc(st.x, st.y, st.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    for (const st of starsNearRef.current) {
+      st.y += base * dt;
+      if (st.y > H) { st.y = 0; st.x = Math.random() * W; }
+      st.tw += dt * 7;
+      const a = 0.4 + 0.4 * Math.sin(st.tw);
       ctx.fillStyle = `rgba(255,255,255,${a})`;
       ctx.beginPath();
       ctx.arc(st.x, st.y, st.r, 0, Math.PI * 2);
@@ -88,10 +122,10 @@ export function CrashPage() {
     if (s.length >= 2) {
       const maxT = Math.max(0.5, s[s.length - 1].t);
       const maxM = Math.max(1.2, s[s.length - 1].m);
-      const px = (p) => (p.t / maxT) * (W - 16) + 8;
-      const py = (p) => H - 10 - ((p.m - 1) / (maxM - 1)) * (H - 24);
+      const px = (p) => (p.t / maxT) * (W - 20) + 10;
+      const py = (p) => H - 12 - ((p.m - 1) / (maxM - 1)) * (H - 30);
 
-      // Relleno bajo la curva
+      // Relleno bajo la curva.
       ctx.beginPath();
       ctx.moveTo(px(s[0]), py(s[0]));
       for (const p of s) ctx.lineTo(px(p), py(p));
@@ -100,28 +134,28 @@ export function CrashPage() {
       ctx.closePath();
       const fill = ctx.createLinearGradient(0, 0, 0, H);
       if (crashedNow) {
-        fill.addColorStop(0, "rgba(239,68,68,0.30)");
+        fill.addColorStop(0, "rgba(239,68,68,0.34)");
         fill.addColorStop(1, "rgba(239,68,68,0)");
       } else {
-        fill.addColorStop(0, "rgba(46,224,111,0.30)");
+        fill.addColorStop(0, "rgba(46,224,111,0.34)");
         fill.addColorStop(1, "rgba(46,224,111,0)");
       }
       ctx.fillStyle = fill;
       ctx.fill();
 
-      // Curva con degradado y brillo
+      // Curva con degradado y brillo.
       const stroke = ctx.createLinearGradient(0, H, 0, 0);
       stroke.addColorStop(0, "#2ee06f");
-      stroke.addColorStop(0.6, "#caa84a");
+      stroke.addColorStop(0.55, "#caa84a");
       stroke.addColorStop(1, "#ef6a4a");
       ctx.beginPath();
       ctx.moveTo(px(s[0]), py(s[0]));
       for (const p of s) ctx.lineTo(px(p), py(p));
       ctx.strokeStyle = crashedNow ? "#ef4444" : stroke;
-      ctx.lineWidth = 3.5;
+      ctx.lineWidth = 4;
       ctx.lineJoin = "round";
       ctx.shadowColor = crashedNow ? "#ef4444" : "#2ee06f";
-      ctx.shadowBlur = 12;
+      ctx.shadowBlur = 16;
       ctx.stroke();
       ctx.shadowBlur = 0;
 
@@ -129,32 +163,46 @@ export function CrashPage() {
       const tx = px(tip), ty = py(tip);
 
       if (expProgress === null) {
-        // Llama del cohete: estela detrás de la punta.
+        // Estela de llama: partículas en degradado tras la punta.
         const prev = s[Math.max(0, s.length - 6)];
         const ang = Math.atan2(ty - py(prev), tx - px(prev));
-        for (let i = 1; i <= 5; i++) {
-          const fx = tx - Math.cos(ang) * i * 5;
-          const fy = ty - Math.sin(ang) * i * 5;
+        for (let i = 1; i <= 8; i++) {
+          const fx = tx - Math.cos(ang) * i * 5.5 + (Math.random() - 0.5) * 3;
+          const fy = ty - Math.sin(ang) * i * 5.5 + (Math.random() - 0.5) * 3;
+          const t = i / 8;
           ctx.beginPath();
-          ctx.arc(fx, fy, 6 - i, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(255,${180 - i * 20},40,${0.5 - i * 0.08})`;
+          ctx.arc(fx, fy, 7 - i * 0.7, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(255,${200 - i * 18},${60 - i * 6},${0.6 * (1 - t)})`;
           ctx.fill();
         }
+        // Halo del cohete.
+        ctx.beginPath();
+        ctx.arc(tx, ty, 14, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(255,200,90,0.18)";
+        ctx.fill();
         // Cohete rotado según la pendiente.
         ctx.save();
         ctx.translate(tx, ty);
         ctx.rotate(ang + Math.PI / 4); // 🚀 apunta al NE por defecto
-        ctx.font = "24px serif";
+        ctx.font = "30px serif";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText("🚀", 0, 0);
         ctx.restore();
       } else {
-        // Explosión: anillos expansivos + destello + 💥.
+        // Explosión: destello, anillos y metralla.
         const e = expProgress;
-        const R = 8 + e * 70;
+        if (e < 0.02) {
+          // Lanza la metralla una sola vez al inicio.
+          debrisRef.current = Array.from({ length: 18 }, () => {
+            const a = Math.random() * Math.PI * 2;
+            const v = 60 + Math.random() * 160;
+            return { x: tx, y: ty, vx: Math.cos(a) * v, vy: Math.sin(a) * v, r: 1.5 + Math.random() * 2.5 };
+          });
+        }
+        const R = 8 + e * 90;
         ctx.strokeStyle = `rgba(255,${120 - e * 80},40,${1 - e})`;
-        ctx.lineWidth = 4 * (1 - e) + 1;
+        ctx.lineWidth = 5 * (1 - e) + 1;
         ctx.beginPath();
         ctx.arc(tx, ty, R, 0, Math.PI * 2);
         ctx.stroke();
@@ -162,12 +210,21 @@ export function CrashPage() {
         ctx.arc(tx, ty, R * 0.6, 0, Math.PI * 2);
         ctx.strokeStyle = `rgba(255,220,120,${0.8 * (1 - e)})`;
         ctx.stroke();
-        // Destello inicial sobre todo el lienzo
+        // Metralla.
+        for (const d of debrisRef.current) {
+          const dx = tx + d.vx * e;
+          const dy = ty + d.vy * e + 60 * e * e;
+          ctx.fillStyle = `rgba(255,${160 - e * 100},70,${1 - e})`;
+          ctx.beginPath();
+          ctx.arc(dx, dy, d.r * (1 - e * 0.5), 0, Math.PI * 2);
+          ctx.fill();
+        }
+        // Destello inicial sobre todo el lienzo.
         if (e < 0.5) {
-          ctx.fillStyle = `rgba(239,68,68,${(0.5 - e) * 0.5})`;
+          ctx.fillStyle = `rgba(239,68,68,${(0.5 - e) * 0.55})`;
           ctx.fillRect(0, 0, W, H);
         }
-        ctx.font = `${24 + e * 16}px serif`;
+        ctx.font = `${26 + e * 18}px serif`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText("💥", tx, ty);
@@ -181,13 +238,14 @@ export function CrashPage() {
     setMult(crashAtRef.current);
     multRef.current = crashAtRef.current;
     setPhase("idle");
+    setHistory((h) => [crashAtRef.current, ...h].slice(0, 10));
     // Sacudida del lienzo (Web Animations API: no remonta ni borra el canvas).
     canvasRef.current?.animate(
       [
         { transform: "translate(0,0)" },
-        { transform: "translate(-5px,3px)" },
-        { transform: "translate(5px,-3px)" },
-        { transform: "translate(-4px,-2px)" },
+        { transform: "translate(-6px,4px)" },
+        { transform: "translate(6px,-4px)" },
+        { transform: "translate(-5px,-2px)" },
         { transform: "translate(0,0)" },
       ],
       { duration: 450, easing: "ease-in-out" }
@@ -196,10 +254,10 @@ export function CrashPage() {
       setMessage({ kind: "lose", text: `💥 ¡Estalló en ×${crashAtRef.current.toFixed(2)}! Pierdes ${stakeRef.current} pts.` });
       Audio.lose();
     }
-    // Anima la explosión durante ~700 ms.
+    // Anima la explosión durante ~800 ms.
     const t0 = performance.now();
     const boom = (now) => {
-      const e = Math.min(1, (now - t0) / 700);
+      const e = Math.min(1, (now - t0) / 800);
       draw(now, true, e);
       if (e < 1) rafRef.current = requestAnimationFrame(boom);
     };
@@ -260,13 +318,35 @@ export function CrashPage() {
     rafRef.current = requestAnimationFrame(loop);
   }
 
+  const live = phase === "flying";
+  const multColor = live || cashed ? "text-signal-green" : "text-signal-red";
+  const glow = live
+    ? "0 0 24px rgba(46,224,111,0.65)"
+    : cashed
+    ? "0 0 24px rgba(46,224,111,0.5)"
+    : "0 0 24px rgba(239,68,68,0.5)";
+
   return (
     <Felt title="CRASH" icon="🚀" stake={stake} bg="#1b2540,#0a0f20">
+      {/* Historial de estallidos recientes */}
+      {history.length > 0 ? (
+        <div className="mb-2 flex flex-wrap justify-center gap-1.5">
+          {history.map((h, i) => (
+            <span
+              key={i}
+              className="rounded-md px-2 py-0.5 font-cond text-xs font-bold tabular-nums"
+              style={{ background: `${histColor(h)}22`, color: histColor(h), border: `1px solid ${histColor(h)}55` }}
+            >
+              ×{h.toFixed(2)}
+            </span>
+          ))}
+        </div>
+      ) : null}
+
       <div className="text-center">
         <div
-          className={`font-display text-5xl tabular-nums sm:text-6xl ${
-            phase === "flying" ? "text-signal-green" : cashed ? "text-signal-green" : "text-signal-red"
-          }`}
+          className={`font-display text-6xl tabular-nums transition-transform sm:text-7xl ${multColor} ${live ? "scale-105" : ""}`}
+          style={{ textShadow: glow }}
         >
           ×{mult.toFixed(2)}
         </div>
@@ -275,15 +355,15 @@ export function CrashPage() {
       <canvas
         ref={canvasRef}
         width="640"
-        height="200"
-        className="mt-3 block h-auto w-full rounded-lg border border-asphalt-700"
+        height="260"
+        className="mt-3 block h-auto w-full rounded-xl border border-asphalt-700 shadow-inner shadow-black/60"
         role="img"
         aria-label="Curva del multiplicador"
       />
 
       <Banner message={message} />
 
-      {phase === "flying" ? (
+      {live ? (
         <button
           type="button"
           disabled={cashed}

@@ -83,11 +83,17 @@ export const WHEEL_SEGMENTS = [0, 1.5, 0, 2, 0, 3, 0, 2, 0, 1.5, 0, 5, 0, 0, 0, 
 }));
 
 // DADOS — cuotas de los mercados (2 dados, suma 2..12).
+// Cuotas justas = 36 / nº de combinaciones favorables, con ventaja de casa.
 export const DICE_MARKETS = {
   low: { label: "Menos de 7", odds: 2.3, test: (s) => s < 7 },
-  seven: { label: "Igual a 7", odds: 5, test: (s) => s === 7 },
   high: { label: "Más de 7", odds: 2.3, test: (s) => s > 7 },
+  seven: { label: "Igual a 7", odds: 5, test: (s) => s === 7 },
+  even: { label: "Par", odds: 1.95, test: (s) => s % 2 === 0 },
+  odd: { label: "Impar", odds: 1.95, test: (s) => s % 2 === 1 },
   doubles: { label: "Dobles", odds: 5, test: (s, a, b) => a === b },
+  field: { label: "Campo (2-4,9-12)", odds: 2.2, test: (s) => s <= 4 || s >= 9 },
+  big: { label: "Más de 10", odds: 11, test: (s) => s > 10 },
+  small: { label: "Menos de 4", odds: 11, test: (s) => s < 4 },
 };
 
 // CARRERA — vehículos participantes y cuota (4 corredores).

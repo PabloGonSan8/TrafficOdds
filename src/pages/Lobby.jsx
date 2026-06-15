@@ -7,16 +7,32 @@ const GAMES = [
     icon: "🚦",
     name: "Tráfico en vivo",
     desc: "Apuesta sobre el tráfico de la autopista: más/menos, comparativas y eventos sorpresa.",
-    cat: "Tráfico",
+    cat: "Principal",
     color: "#16a34a",
+  },
+  {
+    to: "/garito",
+    icon: "🎲",
+    name: "Garito",
+    desc: "Roguelike de dados: lanza, guarda y relanza. Compra amuletos, dados especiales y vence a los garitos jefe.",
+    cat: "Principal",
+    color: "#d9a441",
   },
   {
     to: "/carrera",
     icon: "🏁",
     name: "Carrera",
     desc: "Apuesta por un vehículo en una carrera a cuatro. Si gana el tuyo, cobras ×3,96.",
-    cat: "Tráfico",
+    cat: "Carreras",
     color: "#22c55e",
+  },
+  {
+    to: "/caballos",
+    icon: "🏇",
+    name: "Hipódromo",
+    desc: "Carreras de caballos como en las casas de apuestas: Ganador, Colocado, Exacta y Trifecta con cuotas reales.",
+    cat: "Carreras",
+    color: "#15803d",
   },
   {
     to: "/ruleta",
@@ -109,7 +125,9 @@ const GAMES = [
 ];
 
 const SECTIONS = [
-  { cat: "Tráfico", title: "🚦 Tráfico", sub: "Lo nuestro" },
+  { cat: "Principal", title: "⭐ Principales", sub: "Los nuestros" },
+  { cat: "Tráfico", title: "🚦 Tráfico", sub: "Más de carretera" },
+  { cat: "Carreras", title: "🏁 Carreras", sub: "Apuesta y a correr" },
   { cat: "Casino", title: "🎰 Casino", sub: "Clásicos del azar" },
 ];
 
