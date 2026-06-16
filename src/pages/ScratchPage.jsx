@@ -177,7 +177,19 @@ export function ScratchPage() {
   }
 
   return (
-    <Felt title="RASCA Y GANA" icon="🎫" stake={stake} bg="#5b1530,#33091a">
+    <Felt
+      title="RASCA Y GANA"
+      icon="🎫"
+      stake={stake}
+      bg="#5b1530,#33091a"
+      help={
+        <ul className="list-disc space-y-1 pl-4">
+          <li>Compra el boleto con tus puntos y rasca las casillas.</li>
+          <li>Si salen suficientes símbolos iguales, ganas el premio asociado.</li>
+          <li>Cuanto mayor la apuesta, mayores los premios posibles.</li>
+        </ul>
+      }
+    >
       <div className="relative mx-auto aspect-square w-full max-w-[312px]">
         {/* Símbolos debajo */}
         <div className="absolute inset-0 grid grid-cols-3 gap-2 rounded-lg bg-asphalt-950 p-2" aria-hidden={!done}>

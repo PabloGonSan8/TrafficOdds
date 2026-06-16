@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useGameState } from "../../context/GameContext";
 
@@ -5,9 +6,13 @@ import { useGameState } from "../../context/GameContext";
  * Felt — armazón común de las mesas de casino: enlace al lobby, marcador de
  * saldo/apuesta y el cajón de fieltro con borde de madera. Cada juego mete
  * dentro sus propios controles.
+ *
+ * `help`: reglas para quien no sepa jugar. Botón "?" junto al título las
+ * despliega. Puede ser texto u JSX.
  */
-export function Felt({ title, icon, stake = null, bg = "#0f6b35,#0a4f27", children }) {
+export function Felt({ title, icon, stake = null, bg = "#0f6b35,#0a4f27", help = null, children }) {
   const { points } = useGameState();
+  const [showHelp, setShowHelp] = useState(false);
   const [from, to] = bg.split(",");
   return (
     <main className="mx-auto max-w-3xl p-3 sm:p-5">
@@ -30,9 +35,29 @@ export function Felt({ title, icon, stake = null, bg = "#0f6b35,#0a4f27", childr
           ) : null}
         </div>
 
-        <h1 className="mb-3 text-center font-display text-xl tracking-wide text-signal-amber drop-shadow-[0_0_8px_rgba(255,176,32,0.5)] sm:text-2xl">
-          {icon} {title}
-        </h1>
+        <div className="relative mb-3 flex items-center justify-center">
+          <h1 className="text-center font-display text-xl tracking-wide text-signal-amber drop-shadow-[0_0_8px_rgba(255,176,32,0.5)] sm:text-2xl">
+            {icon} {title}
+          </h1>
+          {help ? (
+            <button
+              type="button"
+              aria-expanded={showHelp}
+              aria-label="Cómo jugar"
+              onClick={() => setShowHelp((v) => !v)}
+              className="absolute right-0 flex h-8 w-8 items-center justify-center rounded-full border border-white/30 bg-black/40 font-cond text-base font-bold text-white hover:bg-black/60"
+            >
+              ?
+            </button>
+          ) : null}
+        </div>
+
+        {help && showHelp ? (
+          <div className="mb-3 rounded-lg border border-white/20 bg-black/40 p-3 font-cond text-sm leading-relaxed text-white/85">
+            <div className="mb-1 font-bold text-signal-amber">Cómo jugar</div>
+            {help}
+          </div>
+        ) : null}
 
         {children}
       </div>

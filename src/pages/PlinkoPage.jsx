@@ -191,7 +191,19 @@ export function PlinkoPage() {
   }, [risk]);
 
   return (
-    <Felt title="PLINKO" icon="🔵" stake={stake} bg="#23304a,#0c1322">
+    <Felt
+      title="PLINKO"
+      icon="🔵"
+      stake={stake}
+      bg="#23304a,#0c1322"
+      help={
+        <ul className="list-disc space-y-1 pl-4">
+          <li>Sueltas una bola que rebota entre clavos hasta caer en una ranura de abajo.</li>
+          <li>Cada ranura tiene un multiplicador; cobras apuesta × el de la ranura final.</li>
+          <li>Las ranuras de los extremos pagan más, pero la bola cae ahí pocas veces. El riesgo cambia los multiplicadores.</li>
+        </ul>
+      }
+    >
       <canvas
         ref={canvasRef}
         width={W}

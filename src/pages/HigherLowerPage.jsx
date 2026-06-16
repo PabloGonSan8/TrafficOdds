@@ -128,7 +128,19 @@ export function HigherLowerPage() {
   }
 
   return (
-    <Felt title="MAYOR / MENOR" icon="🔼" stake={phase === "bet" ? stake : pot} bg="#0f6b35,#0a3f22">
+    <Felt
+      title="MAYOR / MENOR"
+      icon="🔼"
+      stake={phase === "bet" ? stake : pot}
+      bg="#0f6b35,#0a3f22"
+      help={
+        <ul className="list-disc space-y-1 pl-4">
+          <li>Hay una carta sobre la mesa. Adivina si la siguiente será mayor o menor.</li>
+          <li>Cada acierto multiplica tu bote; puedes seguir o retirarte para cobrar.</li>
+          <li>Si fallas, pierdes el bote. ¡Retírate a tiempo!</li>
+        </ul>
+      }
+    >
       <div className="flex flex-col items-center gap-3">
         <Card value={current} suit={suit} />
         {phase === "playing" ? (

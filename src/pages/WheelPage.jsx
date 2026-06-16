@@ -121,7 +121,19 @@ export function WheelPage() {
   }
 
   return (
-    <Felt title="RUEDA DE LA FORTUNA" icon="🎯" stake={stake} bg="#4a1d5e,#1f0a2a">
+    <Felt
+      title="RUEDA DE LA FORTUNA"
+      icon="🎯"
+      stake={stake}
+      bg="#4a1d5e,#1f0a2a"
+      help={
+        <ul className="list-disc space-y-1 pl-4">
+          <li>Apuesta y gira la rueda dividida en sectores con distintos multiplicadores.</li>
+          <li>El puntero marca dónde se detiene: cobras apuesta × el multiplicador del sector.</li>
+          <li>Los sectores que más pagan son los más pequeños (más difíciles de acertar).</li>
+        </ul>
+      }
+    >
       <div className="relative mx-auto w-fit">
         {/* Puntero */}
         <div

@@ -122,8 +122,10 @@ export function CrashPage() {
     if (s.length >= 2) {
       const maxT = Math.max(0.5, s[s.length - 1].t);
       const maxM = Math.max(1.2, s[s.length - 1].m);
-      const px = (p) => (p.t / maxT) * (W - 20) + 10;
-      const py = (p) => H - 12 - ((p.m - 1) / (maxM - 1)) * (H - 30);
+      // Márgenes amplios arriba y a la derecha: la punta nunca llega al borde,
+      // así el cohete (44px) se ve entero y no se corta.
+      const px = (p) => (p.t / maxT) * (W - 60) + 10;
+      const py = (p) => H - 12 - ((p.m - 1) / (maxM - 1)) * (H - 64);
 
       // Relleno bajo la curva.
       ctx.beginPath();
@@ -163,28 +165,45 @@ export function CrashPage() {
       const tx = px(tip), ty = py(tip);
 
       if (expProgress === null) {
-        // Estela de llama: partículas en degradado tras la punta.
         const prev = s[Math.max(0, s.length - 6)];
         const ang = Math.atan2(ty - py(prev), tx - px(prev));
-        for (let i = 1; i <= 8; i++) {
-          const fx = tx - Math.cos(ang) * i * 5.5 + (Math.random() - 0.5) * 3;
-          const fy = ty - Math.sin(ang) * i * 5.5 + (Math.random() - 0.5) * 3;
-          const t = i / 8;
+        // Bamboleo lateral del cohete para dar sensación de empuje.
+        const wob = Math.sin(now / 90) * 2.5;
+        // Humo de escape: bocanadas grises que se quedan atrás y se disipan.
+        for (let i = 1; i <= 6; i++) {
+          const sx = tx - Math.cos(ang) * (38 + i * 9) + (Math.random() - 0.5) * 7;
+          const sy = ty - Math.sin(ang) * (38 + i * 9) + (Math.random() - 0.5) * 7;
           ctx.beginPath();
-          ctx.arc(fx, fy, 7 - i * 0.7, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(255,${200 - i * 18},${60 - i * 6},${0.6 * (1 - t)})`;
+          ctx.arc(sx, sy, 5 + i * 1.6, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(180,185,200,${0.12 * (1 - i / 7)})`;
           ctx.fill();
         }
-        // Halo del cohete.
+        // Estela de llama: más larga, con núcleo blanco-amarillo brillante.
+        for (let i = 1; i <= 14; i++) {
+          const fx = tx - Math.cos(ang) * i * 6 + (Math.random() - 0.5) * 4;
+          const fy = ty - Math.sin(ang) * i * 6 + (Math.random() - 0.5) * 4;
+          const t = i / 14;
+          ctx.beginPath();
+          ctx.arc(fx, fy, 9 - i * 0.55, 0, Math.PI * 2);
+          ctx.fillStyle =
+            i <= 3
+              ? `rgba(255,255,${200 - i * 30},${0.85 * (1 - t)})` // núcleo
+              : `rgba(255,${190 - i * 11},${50 - i * 3},${0.6 * (1 - t)})`;
+          ctx.fill();
+        }
+        // Halo del cohete, más grande y cálido.
+        const halo = ctx.createRadialGradient(tx, ty, 2, tx, ty, 26);
+        halo.addColorStop(0, "rgba(255,210,110,0.4)");
+        halo.addColorStop(1, "rgba(255,200,90,0)");
+        ctx.fillStyle = halo;
         ctx.beginPath();
-        ctx.arc(tx, ty, 14, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(255,200,90,0.18)";
+        ctx.arc(tx, ty, 26, 0, Math.PI * 2);
         ctx.fill();
-        // Cohete rotado según la pendiente.
+        // Cohete: más grande, rotado según la pendiente, con bamboleo.
         ctx.save();
-        ctx.translate(tx, ty);
+        ctx.translate(tx + wob, ty);
         ctx.rotate(ang + Math.PI / 4); // 🚀 apunta al NE por defecto
-        ctx.font = "30px serif";
+        ctx.font = "44px serif";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText("🚀", 0, 0);
@@ -327,7 +346,19 @@ export function CrashPage() {
     : "0 0 24px rgba(239,68,68,0.5)";
 
   return (
-    <Felt title="CRASH" icon="🚀" stake={stake} bg="#1b2540,#0a0f20">
+    <Felt
+      title="CRASH"
+      icon="🚀"
+      stake={stake}
+      bg="#1b2540,#0a0f20"
+      help={
+        <ul className="list-disc space-y-1 pl-4">
+          <li>Un cohete despega y el multiplicador sube sin parar… hasta que estalla.</li>
+          <li>Pon tu apuesta y pulsa RETIRAR antes del estallido para cobrar apuesta × multiplicador.</li>
+          <li>Si estalla antes de que retires, pierdes la apuesta. Nadie sabe cuándo explota.</li>
+        </ul>
+      }
+    >
       {/* Historial de estallidos recientes */}
       {history.length > 0 ? (
         <div className="mb-2 flex flex-wrap justify-center gap-1.5">

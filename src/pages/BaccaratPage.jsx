@@ -9,6 +9,7 @@ import {
   settle,
 } from "../engine/baccarat";
 import * as Audio from "../engine/audio";
+import { GameHelp } from "../components/casino/GameHelp";
 
 const CHIPS = [
   { value: 10, bg: "#e8e4d8", text: "#1a1a1a", ring: "#b8b4a8" },
@@ -58,12 +59,14 @@ function PlayingCard({ card }) {
   );
 }
 
-function Hand({ title, cards, score, won }) {
+function Hand({ title, cards, score, won, tie }) {
+  const ring = won
+    ? "rounded-lg bg-white/5 p-2 ring-1 ring-sodium/70"
+    : tie
+      ? "rounded-lg bg-signal-amber/10 p-2 ring-1 ring-signal-amber/70"
+      : "p-2";
   return (
-    <section
-      aria-label={title}
-      className={won ? "rounded-lg bg-white/5 p-2 ring-1 ring-sodium/70" : "p-2"}
-    >
+    <section aria-label={title} className={ring}>
       <div className="mb-1.5 flex items-center gap-2">
         <h2 className="font-cond text-sm font-semibold uppercase tracking-wide text-white/80">
           {title}
@@ -71,6 +74,11 @@ function Hand({ title, cards, score, won }) {
         {score !== null ? (
           <span className="rounded-full bg-black/40 px-2 py-0.5 font-cond text-sm font-bold text-sodium">
             {score}
+          </span>
+        ) : null}
+        {tie ? (
+          <span className="rounded-full bg-signal-amber/25 px-2 py-0.5 font-cond text-xs font-bold uppercase text-signal-amber">
+            Empate
           </span>
         ) : null}
       </div>
@@ -180,6 +188,7 @@ export function BaccaratPage() {
   const showCards = round && reveal;
   const playerWon = showCards && round.winner === "player";
   const bankerWon = showCards && round.winner === "banker";
+  const isTie = showCards && round.winner === "tie";
 
   return (
     <main className="mx-auto max-w-3xl p-3 sm:p-5">
@@ -200,6 +209,16 @@ export function BaccaratPage() {
           </div>
         </div>
 
+        <GameHelp
+          help={
+            <ul className="list-disc space-y-1 pl-4">
+              <li>Apuestas a quién ganará: Jugador (Player), Banca (Banker) o Empate (Tie).</li>
+              <li>Gana la mano más cercana a 9. Las figuras y el 10 valen 0; solo cuenta la última cifra de la suma.</li>
+              <li>Player paga 1:1, Banker 1:1 (−5% comisión) y Empate 8:1. No decides cartas: solo la apuesta.</li>
+            </ul>
+          }
+        />
+
         <p className="mb-3 text-center font-cond text-xs uppercase tracking-widest text-white/60">
           Punto Banco · Player 1:1 · Banker 1:1 (−5%) · Tie 8:1 · Mesa {BAC_LIMITS.min}–
           {BAC_LIMITS.max} pts
@@ -211,12 +230,14 @@ export function BaccaratPage() {
             cards={showCards ? round.player : []}
             score={showCards ? round.playerScore : null}
             won={playerWon}
+            tie={isTie}
           />
           <Hand
             title="Banker"
             cards={showCards ? round.banker : []}
             score={showCards ? round.bankerScore : null}
             won={bankerWon}
+            tie={isTie}
           />
         </div>
 

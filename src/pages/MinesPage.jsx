@@ -82,7 +82,19 @@ export function MinesPage() {
   const ended = phase === "bet" && boom !== -1;
 
   return (
-    <Felt title="MINAS" icon="💣" stake={phase === "bet" ? stake : pot} bg="#23304a,#0c1322">
+    <Felt
+      title="MINAS"
+      icon="💣"
+      stake={phase === "bet" ? stake : pot}
+      bg="#23304a,#0c1322"
+      help={
+        <ul className="list-disc space-y-1 pl-4">
+          <li>Tablero con casillas; algunas esconden minas.</li>
+          <li>Cada casilla segura que destapas sube el multiplicador del bote.</li>
+          <li>Retírate cuando quieras para cobrar. Si tocas una mina, pierdes todo.</li>
+        </ul>
+      }
+    >
       {phase === "playing" ? (
         <p className="mb-2 text-center font-cond text-sm text-white/80">
           Actual ×{multiplier} · siguiente ×{nextMult} · {mines} minas

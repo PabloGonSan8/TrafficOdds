@@ -80,7 +80,19 @@ export function CoinflipPage() {
   const face = SIDES[coin];
 
   return (
-    <Felt title="DOBLE O NADA" icon="🪙" stake={phase === "bet" ? stake : pot} bg="#1d4ed8,#0a1f4f">
+    <Felt
+      title="DOBLE O NADA"
+      icon="🪙"
+      stake={phase === "bet" ? stake : pot}
+      bg="#1d4ed8,#0a1f4f"
+      help={
+        <ul className="list-disc space-y-1 pl-4">
+          <li>Elige cara o cruz y lanza la moneda.</li>
+          <li>Si aciertas, duplicas el bote y puedes volver a lanzar o retirarte para cobrar.</li>
+          <li>Si fallas, pierdes el bote.</li>
+        </ul>
+      }
+    >
       <div className="flex flex-col items-center gap-4">
         <div
           className={`flex h-28 w-28 items-center justify-center rounded-full border-4 border-white/40 text-5xl shadow-xl shadow-black/50 transition-transform duration-150 sm:h-32 sm:w-32 ${

@@ -106,7 +106,19 @@ export function DicePage() {
   }
 
   return (
-    <Felt title="DADOS" icon="🎲" stake={stake} bg="#7a1f1f,#3a0d0d">
+    <Felt
+      title="DADOS"
+      icon="🎲"
+      stake={stake}
+      bg="#7a1f1f,#3a0d0d"
+      help={
+        <ul className="list-disc space-y-1 pl-4">
+          <li>Se tiran dos dados y se suma su resultado (del 2 al 12).</li>
+          <li>Elige tu apuesta (Más/Menos de 7, par/impar, dobles…), ajusta los puntos y pulsa TIRAR.</li>
+          <li>Si aciertas, ganas tu apuesta multiplicada por la cuota (×). Cuanto más difícil, más paga.</li>
+        </ul>
+      }
+    >
       <style>{diceCss}</style>
 
       <div className="flex items-center justify-center gap-5">

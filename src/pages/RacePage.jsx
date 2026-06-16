@@ -130,7 +130,19 @@ export function RacePage() {
   }
 
   return (
-    <Felt title="CARRERA" icon="🏁" stake={stake} bg="#0f6b35,#0a3f22">
+    <Felt
+      title="CARRERA"
+      icon="🏁"
+      stake={stake}
+      bg="#0f6b35,#0a3f22"
+      help={
+        <ul className="list-disc space-y-1 pl-4">
+          <li>Elige el corredor que crees que cruzará primero la meta.</li>
+          <li>Cada uno tiene su cuota (×): los menos favoritos pagan más.</li>
+          <li>Apuesta y arranca. Si tu corredor gana, cobras apuesta × cuota.</li>
+        </ul>
+      }
+    >
       <canvas
         ref={canvasRef}
         width={W}

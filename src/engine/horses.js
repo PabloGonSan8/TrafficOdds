@@ -12,14 +12,14 @@ import { HOUSE_EDGE, roundOdds } from "./casino";
 
 // Parrilla fija de caballos: dorsal, nombre y color de la casaca (silk).
 export const HORSE_BASES = [
-  { num: 1, name: "Trueno", color: "#ef4444" },
-  { num: 2, name: "Relámpago", color: "#3b82f6" },
-  { num: 3, name: "Tornado", color: "#22c55e" },
+  { num: 1, name: "Pepe Trota", color: "#ef4444" },
+  { num: 2, name: "Felipe Neduro", color: "#3b82f6" },
+  { num: 3, name: "Santiago Norrea", color: "#22c55e" },
   { num: 4, name: "Broberto Chati", color: "#eab308" },
-  { num: 5, name: "Vendaval", color: "#a855f7" },
-  { num: 6, name: "Huracán", color: "#f97316" },
-  { num: 7, name: "Tormenta", color: "#06b6d4" },
-  { num: 8, name: "Ciclón", color: "#ec4899" },
+  { num: 5, name: "Jorge Nitales", color: "#a855f7" },
+  { num: 6, name: "Elena Nito", color: "#f97316" },
+  { num: 7, name: "Hustle Hard", color: "#06b6d4" },
+  { num: 8, name: "101 Pito", color: "#ec4899" },
 ];
 
 export const FIELD = HORSE_BASES.length; // 8 corredores

@@ -15,6 +15,7 @@ import {
   settle,
 } from "../engine/blackjack";
 import * as Audio from "../engine/audio";
+import { GameHelp } from "../components/casino/GameHelp";
 
 // Fichas para subir la apuesta (suman a la actual).
 const CHIPS = [
@@ -374,6 +375,16 @@ export function BlackjackPage() {
             </span>
           </div>
         </div>
+
+        <GameHelp
+          help={
+            <ul className="list-disc space-y-1 pl-4">
+              <li>Objetivo: sumar más que la banca sin pasar de 21. Las figuras valen 10 y el as 1 u 11.</li>
+              <li>Pide carta para acercarte a 21 o plántate para quedarte como estás.</li>
+              <li>Si te pasas de 21 pierdes. Blackjack (21 con 2 cartas) paga 3 a 2.</li>
+            </ul>
+          }
+        />
 
         <p className="mb-3 text-center font-cond text-xs uppercase tracking-widest text-white/60">
           Blackjack paga 3 a 2 · Seguro paga 2 a 1 · La banca se planta en 17 · Mesa{" "}

@@ -38,7 +38,9 @@ export class RoadRenderer {
     const def = getVehicleDef(typeId);
     if (!def) return; // tipo desconocido: no romper el bucle
     const lane = Math.floor(Math.random() * LANES_Y.length);
-    const leftToRight = lane < 2;
+    // Conducción europea (derecha): el sentido izq→der circula por los carriles
+    // de abajo (2,3) y el sentido der→izq por los de arriba (0,1).
+    const leftToRight = lane >= 2;
     const speed = def.speed[0] + Math.random() * (def.speed[1] - def.speed[0]);
     // Si está lleno, descarta primero los que ya salieron de pantalla; solo si
     // aún sobra se quita el más antiguo. Así no desaparece un coche visible.
@@ -51,7 +53,9 @@ export class RoadRenderer {
       x: leftToRight ? -40 : this.W + 40,
       y: LANES_Y[lane],
       vx: leftToRight ? speed : -speed,
-      flip: !leftToRight,
+      // El emoji de coche mira a la izquierda por defecto: se voltea cuando
+      // viaja hacia la derecha para que apunte en su sentido de marcha.
+      flip: leftToRight,
       size: typeId === "camion" || typeId === "autobus" ? 30 : 24,
     });
   }

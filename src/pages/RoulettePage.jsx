@@ -11,6 +11,7 @@ import {
   labelForBet,
 } from "../engine/roulette";
 import * as Audio from "../engine/audio";
+import { GameHelp } from "../components/casino/GameHelp";
 
 const SECTOR = (Math.PI * 2) / WHEEL_ORDER.length;
 
@@ -235,7 +236,7 @@ function Cell({ label, betKey, bets, onPlace, className = "", style, disabled, h
 }
 
 /** Punto de apuesta sobre una línea o esquina del tapete (interiores combinadas). */
-function ZoneBtn({ betKey, label, bets, onPlace, disabled, className }) {
+function ZoneBtn({ betKey, label, bets, onPlace, disabled, className, showDot }) {
   const stake = bets[betKey]?.stake ?? 0;
   return (
     <button
@@ -250,6 +251,9 @@ function ZoneBtn({ betKey, label, bets, onPlace, disabled, className }) {
         <span className="pointer-events-none flex h-5 min-w-5 items-center justify-center rounded-full border border-dashed border-white bg-signal-amber px-0.5 font-cond text-[0.6rem] font-bold text-[#1a1200] shadow-md shadow-black/50">
           {stake}
         </span>
+      ) : showDot ? (
+        // Punto guía (solo móvil): marca dónde tocar para combinadas (caballo, cuadro…).
+        <span className="pointer-events-none h-1.5 w-1.5 rounded-full bg-white/40 ring-1 ring-black/30" />
       ) : null}
     </button>
   );
@@ -276,16 +280,18 @@ function InsideZones({ n, vertical, bets, onPlace, disabled }) {
       zones.push({ key: `six:${n}`, label: `Seisena ${n} a ${n + 5}`, cls: "right-[-8px] bottom-[-8px] h-[15px] w-[15px]" });
   } else {
     // Vertical: la casilla de la derecha es n+1 y la de abajo n+3.
+    // Áreas táctiles grandes para el dedo (móvil); el cuadro/seisena va por
+    // encima (z-30) para ganar la intersección frente a los caballos.
     if (n % 3 !== 0)
-      zones.push({ key: `split:${n}-${n + 1}`, label: `Caballo ${n}-${n + 1}`, cls: "right-[-6px] top-1 bottom-1 w-[11px]" });
+      zones.push({ key: `split:${n}-${n + 1}`, label: `Caballo ${n}-${n + 1}`, cls: "right-[-10px] top-1.5 bottom-1.5 w-[20px]" });
     if (n <= 33)
-      zones.push({ key: `split:${n}-${n + 3}`, label: `Caballo ${n}-${n + 3}`, cls: "bottom-[-6px] left-1 right-1 h-[11px]" });
+      zones.push({ key: `split:${n}-${n + 3}`, label: `Caballo ${n}-${n + 3}`, cls: "bottom-[-10px] left-1.5 right-1.5 h-[20px]" });
     if (n % 3 !== 0 && n <= 33)
-      zones.push({ key: `corner:${n}`, label: `Cuadro ${n}-${n + 1}-${n + 3}-${n + 4}`, cls: "right-[-8px] bottom-[-8px] h-[15px] w-[15px]" });
+      zones.push({ key: `corner:${n}`, label: `Cuadro ${n}-${n + 1}-${n + 3}-${n + 4}`, cls: "right-[-13px] bottom-[-13px] z-30 h-7 w-7" });
     if (n % 3 === 1)
-      zones.push({ key: `street:${n}`, label: `Calle ${n}-${n + 1}-${n + 2}`, cls: "left-[-6px] top-1 bottom-1 w-[11px]" });
+      zones.push({ key: `street:${n}`, label: `Calle ${n}-${n + 1}-${n + 2}`, cls: "left-[-10px] top-1.5 bottom-1.5 w-[20px]" });
     if (n % 3 === 1 && n <= 33)
-      zones.push({ key: `six:${n}`, label: `Seisena ${n} a ${n + 5}`, cls: "left-[-8px] bottom-[-8px] h-[15px] w-[15px]" });
+      zones.push({ key: `six:${n}`, label: `Seisena ${n} a ${n + 5}`, cls: "left-[-13px] bottom-[-13px] z-30 h-7 w-7" });
   }
   const style = vertical
     ? { gridColumn: ((n - 1) % 3) + 2, gridRow: Math.floor((n - 1) / 3) + 2 }
@@ -301,6 +307,7 @@ function InsideZones({ n, vertical, bets, onPlace, disabled }) {
           onPlace={onPlace}
           disabled={disabled}
           className={z.cls}
+          showDot={vertical}
         />
       ))}
     </div>
@@ -689,6 +696,16 @@ export function RoulettePage() {
             Apostado: <span className="text-signal-amber">{totalBet.toLocaleString("es-ES")} pts</span>
           </div>
         </div>
+
+        <GameHelp
+          help={
+            <ul className="list-disc space-y-1 pl-4">
+              <li>Coloca fichas en números, colores (rojo/negro), par/impar, docenas… del tapete.</li>
+              <li>La bola gira y cae en un número. Cobras según lo que cubría tu apuesta.</li>
+              <li>Apostar a un solo número paga ×35; rojo/negro o par/impar pagan ×2. Cuanto más cubres, menos paga.</li>
+            </ul>
+          }
+        />
 
         {/* Horizontal en escritorio: rueda a la izquierda, tapete a la derecha */}
         <div className="flex flex-col gap-4 md:flex-row md:items-start">

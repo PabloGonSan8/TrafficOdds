@@ -22,15 +22,24 @@ let toastSeq = 0;
 // repetirse cuando StrictMode re-ejecuta el efecto (advanced-init-once).
 let didInitApp = false;
 
-// Comando secreto de consola (estilo Cookie Clicker): peaje() o peaje(50000).
-// Se registra en cuanto carga el módulo; el hook conecta el handler al montar.
+// Comandos secretos de consola (estilo Cookie Clicker):
+//   peaje() / peaje(50000) → SUMA puntos.
+//   saldo(1000)            → FIJA el saldo a ese valor exacto.
+// Se registran al cargar el módulo; el hook conecta los handlers al montar.
 let cheatAward = null;
+let cheatSet = null;
 if (typeof window !== "undefined") {
   window.peaje = (n = 10000) => {
     const amount = Math.max(1, Math.floor(Number(n) || 0));
     if (cheatAward === null) return "El juego aún está cargando, prueba en un segundo.";
     cheatAward(amount);
     return `🛣️ Peaje cobrado: +${amount.toLocaleString("es-ES")} pts`;
+  };
+  window.saldo = (n) => {
+    const amount = Math.max(0, Math.floor(Number(n) || 0));
+    if (cheatSet === null) return "El juego aún está cargando, prueba en un segundo.";
+    cheatSet(amount);
+    return `💰 Saldo fijado: ${amount.toLocaleString("es-ES")} pts`;
   };
 }
 
@@ -147,6 +156,14 @@ export function useGame() {
     if (message !== null) toast(message, "win");
   }, [syncState, toast]);
 
+  // Fija el saldo a un valor exacto (comando saldo() de consola).
+  const setBalance = useCallback((amount, message = null) => {
+    const s = stateRef.current;
+    s.points = Math.max(0, Math.floor(amount));
+    syncState();
+    if (message !== null) toast(message, "win");
+  }, [syncState, toast]);
+
   const toggleSound = useCallback(() => {
     const s = stateRef.current;
     s.settings.sound = !s.settings.sound;
@@ -204,9 +221,11 @@ export function useGame() {
     window.addEventListener("pointerdown", startMusicOnGesture);
     window.addEventListener("keydown", startMusicOnGesture);
 
-    // Conecta el comando secreto de consola con la economía del juego.
+    // Conecta los comandos secretos de consola con la economía del juego.
     cheatAward = (amount) =>
       awardPoints(amount, `🛣️ Peaje cobrado: +${amount.toLocaleString("es-ES")} pts`);
+    cheatSet = (amount) =>
+      setBalance(amount, `💰 Saldo fijado en ${amount.toLocaleString("es-ES")} pts`);
 
     function startBettingPhase() {
       phaseRef.current = "betting";

@@ -12,6 +12,7 @@ import {
   randomSymbol,
 } from "../engine/slots";
 import * as Audio from "../engine/audio";
+import { GameHelp } from "../components/casino/GameHelp";
 
 // Botones de apuesta: suman a la apuesta actual.
 const BET_STEPS = [10, 25, 50, 100, 250];
@@ -254,6 +255,16 @@ export function SlotsPage() {
             Apuesta: <span className="text-signal-amber">{bet.toLocaleString("es-ES")} pts</span>
           </div>
         </div>
+
+        <GameHelp
+          help={
+            <ul className="list-disc space-y-1 pl-4">
+              <li>Ajusta la apuesta y pulsa girar: los rodillos paran en símbolos al azar.</li>
+              <li>Alinea símbolos iguales en una línea para ganar; cada combinación paga distinto.</li>
+              <li>Algunos símbolos dan premios mayores o tiradas gratis.</li>
+            </ul>
+          }
+        />
 
         <h1 className="mb-3 text-center font-display text-xl tracking-wide text-signal-amber drop-shadow-[0_0_8px_rgba(255,176,32,0.6)] sm:text-2xl">
           🎰 TRAGAPERRAS

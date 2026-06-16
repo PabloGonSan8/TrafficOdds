@@ -80,11 +80,13 @@ export function HorseRacePage() {
     [card]
   );
 
-  // Clasificación ordenada: en directo (dorsales en `live`) o final (índices en `result`).
+  // Clasificación ordenada: en directo (dorsales en `live`, sobre la parrilla
+  // actual) o final (objetos caballo ya ordenados de la carrera terminada).
+  // El resultado guarda los caballos de ESA carrera, no índices, para que siga
+  // siendo correcto aunque al acabar se genere ya una parrilla nueva.
   const standings = useMemo(() => {
     if (live) return live.map((num) => card.horses.find((h) => h.num === num));
-    if (result) return result.map((idx) => card.horses[idx]);
-    return null;
+    return result; // null o array de caballos del orden final
   }, [live, result, card]);
 
   useEffect(() => { paintStatic(); /* eslint-disable-next-line */ }, [card]);
@@ -130,15 +132,6 @@ export function HorseRacePage() {
     });
   }
 
-  function newCard() {
-    if (racing) return;
-    Audio.click();
-    setCard(buildRaceCard());
-    setSel([]);
-    setResult(null);
-    setMessage(null);
-  }
-
   function frame(now) {
     const elapsed = (now - startRef.current) / 1000;
     const dt = Math.min(0.05, (now - lastFrameRef.current) / 1000);
@@ -173,9 +166,11 @@ export function HorseRacePage() {
     order.forEach((idx, rank) => placeHorse(idx, rank === 0 ? 1 : 1 - rank * 0.012));
     setRacing(false);
     setLive(null);
-    setResult(order);
 
     const lb = lockedRef.current;
+    // Guarda los caballos de ESTA carrera (con marca de los que apostó) para el
+    // marcador final, que sobrevive a la parrilla nueva de la siguiente ronda.
+    setResult(order.map((idx) => ({ ...card.horses[idx], mine: lb.sel.includes(idx) })));
     const podium = order.slice(0, PLACES).map((i) => card.horses[i].num).join("-");
     let won = false;
     if (lb.mode === "ganador") won = order[0] === lb.sel[0];
@@ -193,6 +188,11 @@ export function HorseRacePage() {
       setMessage({ kind: "lose", text: `🏁 Gana el ${card.horses[order[0]].num} ${winName}. Llegada ${podium}. Pierdes ${lb.stake} pts.` });
       Audio.lose();
     }
+
+    // Parrilla nueva para la próxima ronda: forma, favorito y cuotas aleatorios
+    // cada vez, sin tener que tocar ningún botón.
+    setCard(buildRaceCard());
+    setSel([]);
   }
 
   function launch() {
@@ -224,7 +224,19 @@ export function HorseRacePage() {
   }
 
   return (
-    <Felt title="HIPÓDROMO" icon="🏇" stake={stake} bg="#14532d,#06270f">
+    <Felt
+      title="HIPÓDROMO"
+      icon="🏇"
+      stake={stake}
+      bg="#14532d,#06270f"
+      help={
+        <ul className="list-disc space-y-1 pl-4">
+          <li>Elige el caballo que crees que ganará la carrera.</li>
+          <li>Cada caballo tiene su cuota (×): los menos favoritos pagan más.</li>
+          <li>Apuesta y arranca. Si tu caballo gana, cobras apuesta × cuota.</li>
+        </ul>
+      }
+    >
       {/* Pista ovalada */}
       <svg viewBox={`0 0 ${VW} ${VH}`} className="block w-full rounded-xl border border-asphalt-700 shadow-inner shadow-black/60" role="img" aria-label="Pista ovalada de carreras de caballos">
         <defs>
@@ -283,7 +295,7 @@ export function HorseRacePage() {
           </div>
           <ol className="grid grid-cols-2 gap-1 sm:grid-cols-4">
             {standings.map((h, k) => {
-              const mine = sel.includes(h.idx);
+              const mine = h.mine ?? sel.includes(h.idx);
               return (
                 <li
                   key={h.num}
@@ -398,29 +410,20 @@ export function HorseRacePage() {
 
       <StakeBar stake={stake} setStake={setStake} points={points} disabled={racing} />
 
-      <div className="mt-3 flex gap-2">
-        <button
-          type="button"
-          disabled={racing}
-          onClick={newCard}
-          className="min-h-12 rounded-md border border-white/30 bg-black/30 px-4 font-cond font-bold text-white hover:bg-black/50 disabled:opacity-40"
-        >
-          🔄
-        </button>
-        <button
-          type="button"
-          disabled={racing || !ready || stake < 10 || stake > points}
-          className="min-h-12 flex-1 rounded-md bg-signal-amber px-3 font-cond text-lg font-bold text-[#1a1200] shadow-lg shadow-black/40 hover:brightness-110 disabled:opacity-40"
-          onClick={launch}
-        >
-          {racing ? "Corriendo…" : ready ? `APOSTAR Y CORRER · ${stake} pts` : "ELIGE TU APUESTA"}
-        </button>
-      </div>
+      <button
+        type="button"
+        disabled={racing || !ready || stake < 10 || stake > points}
+        className="mt-3 min-h-12 w-full rounded-md bg-signal-amber px-3 font-cond text-lg font-bold text-[#1a1200] shadow-lg shadow-black/40 hover:brightness-110 disabled:opacity-40"
+        onClick={launch}
+      >
+        {racing ? "Corriendo…" : ready ? `APOSTAR Y CORRER · ${stake} pts` : "ELIGE TU APUESTA"}
+      </button>
 
       <p className="mt-4 text-center font-cond text-xs text-white/60">
         {FIELD} caballos, cuotas reales: el favorito (★) paga poco y los outsiders mucho.
         Ganador (1º), Colocado (podio top {PLACES}), Exacta (1º-2º en orden) y Trifecta
-        (1º-2º-3º en orden). Pulsa 🔄 para una parrilla nueva.
+        (1º-2º-3º en orden). Al acabar cada carrera sale una parrilla nueva con
+        forma y cuotas distintas.
       </p>
     </Felt>
   );
