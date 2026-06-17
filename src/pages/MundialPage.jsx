@@ -24,7 +24,7 @@ function groupMarkets(markets) {
   return Object.entries(groups);
 }
 
-function MatchCard({ match, status, bettable, locked, slipMarketId, onToggle }) {
+function MatchCard({ match, status, bettable, locked, selectedIds, onToggle }) {
   const markets = useMemo(() => marketsFor(match), [match]);
   const score = match.ft ? `${match.ft[0]} - ${match.ft[1]}` : "vs";
 
@@ -55,7 +55,7 @@ function MatchCard({ match, status, bettable, locked, slipMarketId, onToggle }) 
               </div>
               <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
                 {list.map((m) => {
-                  const isSel = slipMarketId === m.id;
+                  const isSel = selectedIds.has(m.id);
                   return (
                     <button
                       key={m.id}
@@ -105,14 +105,14 @@ function BetSlip({ slip, stake, setStake, points, onRemove, onClear, onPlace }) 
 
       <div className="max-h-32 space-y-1 overflow-y-auto">
         {slip.map((l) => (
-          <div key={l.matchKey} className="flex items-center justify-between gap-2 rounded-lg bg-asphalt-900 px-2 py-1 font-cond text-xs">
+          <div key={l.matchKey + l.marketId} className="flex items-center justify-between gap-2 rounded-lg bg-asphalt-900 px-2 py-1 font-cond text-xs">
             <div className="min-w-0">
               <div className="truncate text-ink">{l.label}</div>
               <div className="truncate text-[0.65rem] text-dim">{l.teams}</div>
             </div>
             <div className="flex items-center gap-2">
               <span className="font-display text-signal-green">{l.odds.toFixed(2)}</span>
-              <button type="button" onClick={() => onRemove(l.matchKey)} className="text-dim hover:text-signal-red">✕</button>
+              <button type="button" onClick={() => onRemove(l)} className="text-dim hover:text-signal-red">✕</button>
             </div>
           </div>
         ))}
@@ -179,20 +179,23 @@ export function MundialPage() {
 
   function toggleLeg(match, market) {
     setSlip((cur) => {
-      const existing = cur.find((l) => l.matchKey === match.key);
-      // Misma selección → quitar. Otra del mismo partido → reemplazar.
+      // 1 selección por MERCADO (grupo) y partido: permite combinar varios
+      // mercados del mismo partido y de partidos distintos.
+      const same = (l) => l.matchKey === match.key && l.group === market.group;
+      const existing = cur.find(same);
       if (existing && existing.marketId === market.id) {
-        return cur.filter((l) => l.matchKey !== match.key);
+        return cur.filter((l) => !same(l)); // tocar la misma → quitar
       }
       const leg = {
         matchKey: match.key,
+        group: market.group,
         marketId: market.id,
         label: market.label,
         teams: `${match.team1} - ${match.team2}`,
         odds: market.odds,
         sim: market.sim,
       };
-      return existing ? cur.map((l) => (l.matchKey === match.key ? leg : l)) : [...cur, leg];
+      return existing ? cur.map((l) => (same(l) ? leg : l)) : [...cur, leg]; // otra del grupo → reemplaza
     });
   }
 
@@ -278,7 +281,7 @@ export function MundialPage() {
                 status={tab}
                 bettable={tab === "upcoming"}
                 locked={matchLocked(store, m.key)}
-                slipMarketId={slip.find((l) => l.matchKey === m.key)?.marketId ?? null}
+                selectedIds={new Set(slip.filter((l) => l.matchKey === m.key).map((l) => l.marketId))}
                 onToggle={toggleLeg}
               />
             ))
@@ -291,7 +294,7 @@ export function MundialPage() {
         stake={stake}
         setStake={setStake}
         points={points}
-        onRemove={(key) => setSlip((cur) => cur.filter((l) => l.matchKey !== key))}
+        onRemove={(leg) => setSlip((cur) => cur.filter((l) => !(l.matchKey === leg.matchKey && l.marketId === leg.marketId)))}
         onClear={() => setSlip([])}
         onPlace={placeSlip}
       />
