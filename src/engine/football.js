@@ -177,16 +177,42 @@ function save(store) {
   localStorage.setItem(KEY, JSON.stringify(store));
 }
 
-/** Registra una apuesta pendiente (el wallet ya descontó el stake fuera). */
+/** Cuota combinada de un boleto: producto de las cuotas (estilo casa real). */
+export function combinedOdds(legs) {
+  const p = legs.reduce((a, l) => a * l.odds, 1);
+  return Math.round(p * 100) / 100;
+}
+
+/** Registra un boleto pendiente (el wallet ya descontó el stake fuera). */
 export function addBet(store, bet) {
   const next = { pending: [bet, ...store.pending], history: store.history };
   save(next);
   return next;
 }
 
+/** ¿Hay ya un boleto pendiente con alguna selección de este partido? */
+export function matchLocked(store, matchKey) {
+  return store.pending.some((bet) => bet.legs.some((l) => l.matchKey === matchKey));
+}
+
 /**
- * Liquida las pendientes cuyos partidos ya terminaron. `award(amount)` acredita
- * el premio en el wallet. Devuelve { store, settled: [{bet, outcome, payout}] }.
+ * Resuelve un boleto (combinada): gana si TODAS las selecciones ganan; pierde
+ * si alguna pierde; sigue pendiente si a alguna le falta el resultado.
+ */
+function resolveSlip(bet, byKey) {
+  for (const leg of bet.legs) {
+    const match = byKey.get(leg.matchKey);
+    const market = match ? marketsFor(match).find((m) => m.id === leg.marketId) : null;
+    const o = market ? market.resolve(match) : null;
+    if (o === null) return null; // falta un partido por terminar
+    if (o === "lose") return "lose"; // una sola caída tumba la combinada
+  }
+  return "win";
+}
+
+/**
+ * Liquida los boletos cuyos partidos ya terminaron. `award(amount)` acredita
+ * el premio en el wallet. Devuelve { store, settled: [{...bet, outcome, payout}] }.
  */
 export function settle(store, matches, award) {
   const byKey = new Map(matches.map((m) => [m.key, m]));
@@ -195,10 +221,8 @@ export function settle(store, matches, award) {
   let history = store.history;
 
   for (const bet of store.pending) {
-    const match = byKey.get(bet.matchKey);
-    const market = match ? marketsFor(match).find((m) => m.id === bet.marketId) : null;
-    const outcome = market ? market.resolve(match) : null;
-    if (!match || outcome === null) {
+    const outcome = resolveSlip(bet, byKey);
+    if (outcome === null) {
       stillPending.push(bet);
       continue;
     }
@@ -237,15 +261,28 @@ export function _selfCheck() {
   const b = JSON.stringify(propActuals(finished));
   console.assert(a === b, "props no deterministas");
 
-  // settle acredita premios.
+  // Combinada: gana solo si todas las patas ganan.
+  const leg1 = { matchKey: finished.key, marketId: "1", odds: mkts.find((m) => m.id === "1").odds };
+  const legX = { matchKey: finished.key, marketId: "X", odds: mkts.find((m) => m.id === "X").odds };
+  console.assert(combinedOdds([leg1, legX]) > leg1.odds, "combinada debe multiplicar");
+
   let credited = 0;
-  const store = { pending: [{ matchKey: finished.key, marketId: "1", stake: 100, odds: mkts.find((m) => m.id === "1").odds }], history: [] };
   const orig = globalThis.localStorage;
   globalThis.localStorage = { getItem: () => null, setItem: () => {} };
-  const r = settle(store, [finished], (amt) => (credited += amt));
+
+  // Boleto ganador (1 pata correcta).
+  const winSlip = { legs: [leg1], stake: 100, odds: combinedOdds([leg1]) };
+  let r = settle({ pending: [winSlip], history: [] }, [finished], (amt) => (credited += amt));
+  console.assert(r.settled[0].outcome === "win" && credited > 100, "boleto simple ganador mal");
+
+  // Combinada con una pata perdedora (empate) → pierde, no acredita.
+  credited = 0;
+  const loseSlip = { legs: [leg1, legX], stake: 100, odds: combinedOdds([leg1, legX]) };
+  r = settle({ pending: [loseSlip], history: [] }, [finished], (amt) => (credited += amt));
+  console.assert(r.settled[0].outcome === "lose" && credited === 0, "combinada con caída debe perder");
+
   globalThis.localStorage = orig;
-  console.assert(r.settled.length === 1 && credited > 100, "premio no acreditado");
-  console.log("football self-check OK", { credited, props: JSON.parse(a) });
+  console.log("football self-check OK", { props: JSON.parse(a) });
 }
 
 if (typeof process !== "undefined" && process.argv?.[1]?.endsWith("football.js")) {

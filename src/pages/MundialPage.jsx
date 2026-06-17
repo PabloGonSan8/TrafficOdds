@@ -8,6 +8,8 @@ import {
   loadBets,
   addBet,
   settle,
+  combinedOdds,
+  matchLocked,
 } from "../engine/football";
 
 const STATUS_BADGE = {
@@ -22,9 +24,8 @@ function groupMarkets(markets) {
   return Object.entries(groups);
 }
 
-function MatchCard({ match, status, bettable, selected, onSelect, onPlace, points }) {
+function MatchCard({ match, status, bettable, locked, slipMarketId, onToggle }) {
   const markets = useMemo(() => marketsFor(match), [match]);
-  const [stake, setStake] = useState(100);
   const score = match.ft ? `${match.ft[0]} - ${match.ft[1]}` : "vs";
 
   return (
@@ -42,7 +43,9 @@ function MatchCard({ match, status, bettable, selected, onSelect, onPlace, point
         <span className="flex-1 text-left text-sm text-ink sm:text-base">{match.team2}</span>
       </div>
 
-      {bettable ? (
+      {locked ? (
+        <p className="mt-2 text-center font-cond text-xs text-signal-amber">✓ Ya tienes una apuesta en este partido</p>
+      ) : bettable ? (
         <div className="mt-3 space-y-2.5">
           {groupMarkets(markets).map(([group, list]) => (
             <div key={group}>
@@ -52,12 +55,12 @@ function MatchCard({ match, status, bettable, selected, onSelect, onPlace, point
               </div>
               <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
                 {list.map((m) => {
-                  const isSel = selected?.matchKey === match.key && selected?.marketId === m.id;
+                  const isSel = slipMarketId === m.id;
                   return (
                     <button
                       key={m.id}
                       type="button"
-                      onClick={() => onSelect({ matchKey: match.key, marketId: m.id, market: m })}
+                      onClick={() => onToggle(match, m)}
                       className={`flex items-center justify-between gap-1 rounded-lg border px-2 py-1.5 font-cond text-xs transition ${
                         isSel
                           ? "border-signal-amber bg-[#2e240d] text-signal-amber"
@@ -72,33 +75,70 @@ function MatchCard({ match, status, bettable, selected, onSelect, onPlace, point
               </div>
             </div>
           ))}
-
-          {selected?.matchKey === match.key ? (
-            <div className="mt-2 flex items-center gap-2 rounded-lg border border-asphalt-700 bg-asphalt-950 p-2">
-              <span className="truncate font-cond text-xs text-dim">{selected.market.label}</span>
-              <input
-                type="number"
-                min="1"
-                value={stake}
-                onChange={(e) => setStake(Math.max(1, parseInt(e.target.value || "0", 10)))}
-                className="w-20 rounded border border-asphalt-700 bg-asphalt-900 px-2 py-1 font-display text-sm text-ink"
-              />
-              <button
-                type="button"
-                disabled={stake > points}
-                onClick={() => onPlace(match, selected.market, stake)}
-                className="ml-auto whitespace-nowrap rounded-lg border border-signal-green bg-[#0d2e1a] px-3 py-1 font-display text-xs text-signal-green disabled:opacity-40"
-              >
-                Apostar · gana {Math.round(stake * selected.market.odds)}
-              </button>
-            </div>
-          ) : null}
         </div>
       ) : (
         <p className="mt-2 text-center font-cond text-xs text-dim">
           {status === "finished" ? "Mercados cerrados" : "Mercados cerrados (partido en juego)"}
         </p>
       )}
+    </div>
+  );
+}
+
+/** Cupón flotante: 1 selección = simple, varias = combinada (cuotas se multiplican). */
+function BetSlip({ slip, stake, setStake, points, onRemove, onClear, onPlace }) {
+  if (slip.length === 0) return null;
+  const odds = combinedOdds(slip);
+  const payout = Math.round(stake * odds);
+  const tooMuch = stake > points;
+
+  return (
+    <div className="fixed inset-x-0 bottom-0 z-40 mx-auto max-w-2xl rounded-t-2xl border border-asphalt-600 bg-asphalt-950 p-3 shadow-2xl shadow-black">
+      <div className="mb-2 flex items-center justify-between">
+        <span className="font-display text-sm text-signal-amber">
+          🎟️ Cupón · {slip.length === 1 ? "Simple" : `Combinada x${slip.length}`}
+        </span>
+        <button type="button" onClick={onClear} className="font-cond text-xs text-dim hover:text-signal-red">
+          Vaciar
+        </button>
+      </div>
+
+      <div className="max-h-32 space-y-1 overflow-y-auto">
+        {slip.map((l) => (
+          <div key={l.matchKey} className="flex items-center justify-between gap-2 rounded-lg bg-asphalt-900 px-2 py-1 font-cond text-xs">
+            <div className="min-w-0">
+              <div className="truncate text-ink">{l.label}</div>
+              <div className="truncate text-[0.65rem] text-dim">{l.teams}</div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="font-display text-signal-green">{l.odds.toFixed(2)}</span>
+              <button type="button" onClick={() => onRemove(l.matchKey)} className="text-dim hover:text-signal-red">✕</button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-2 flex items-center gap-2">
+        <input
+          type="number"
+          min="1"
+          value={stake}
+          onChange={(e) => setStake(Math.max(1, parseInt(e.target.value || "0", 10)))}
+          className="w-24 rounded-lg border border-asphalt-700 bg-asphalt-900 px-2 py-2 font-display text-sm text-ink"
+        />
+        <div className="font-cond text-xs text-dim">
+          Cuota <span className="font-display text-ink">x{odds.toFixed(2)}</span> · Ganas{" "}
+          <span className="font-display text-signal-green">{payout}</span>
+        </div>
+        <button
+          type="button"
+          disabled={tooMuch}
+          onClick={onPlace}
+          className="ml-auto whitespace-nowrap rounded-lg border border-signal-green bg-[#0d2e1a] px-4 py-2 font-display text-sm text-signal-green disabled:opacity-40"
+        >
+          {tooMuch ? "Sin saldo" : "Apostar"}
+        </button>
+      </div>
     </div>
   );
 }
@@ -110,7 +150,8 @@ export function MundialPage() {
   const [matches, setMatches] = useState(null);
   const [error, setError] = useState(null);
   const [store, setStore] = useState(() => loadBets());
-  const [selected, setSelected] = useState(null);
+  const [slip, setSlip] = useState([]); // selecciones del cupón (1 por partido)
+  const [stake, setStake] = useState(100);
   const [tab, setTab] = useState("upcoming");
   const [flash, setFlash] = useState(null);
 
@@ -120,14 +161,13 @@ export function MundialPage() {
       .then((list) => {
         if (!alive) return;
         setMatches(list);
-        // Liquidar pendientes de partidos ya terminados.
         const cur = loadBets();
         const { store: next, settled } = settle(cur, list, (amt) => awardPoints(amt));
         setStore(next);
         if (settled.length) {
           const won = settled.filter((s) => s.outcome === "win");
           const total = won.reduce((a, s) => a + s.payout, 0);
-          setFlash(`${settled.length} apuesta(s) liquidada(s) · ${won.length} ganada(s) (+${total} pts)`);
+          setFlash(`${settled.length} boleto(s) liquidado(s) · ${won.length} ganado(s) (+${total} pts)`);
         }
       })
       .catch((e) => alive && setError(e.message));
@@ -137,21 +177,35 @@ export function MundialPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function place(match, market, stake) {
-    if (!spendPoints(stake)) return;
-    const bet = {
-      matchKey: match.key,
-      marketId: market.id,
-      label: market.label,
-      teams: `${match.team1} - ${match.team2}`,
-      odds: market.odds,
-      stake,
-      sim: market.sim,
-      placedAt: Date.now(),
-    };
+  function toggleLeg(match, market) {
+    setSlip((cur) => {
+      const existing = cur.find((l) => l.matchKey === match.key);
+      // Misma selección → quitar. Otra del mismo partido → reemplazar.
+      if (existing && existing.marketId === market.id) {
+        return cur.filter((l) => l.matchKey !== match.key);
+      }
+      const leg = {
+        matchKey: match.key,
+        marketId: market.id,
+        label: market.label,
+        teams: `${match.team1} - ${match.team2}`,
+        odds: market.odds,
+        sim: market.sim,
+      };
+      return existing ? cur.map((l) => (l.matchKey === match.key ? leg : l)) : [...cur, leg];
+    });
+  }
+
+  function placeSlip() {
+    if (slip.length === 0 || !spendPoints(stake)) return;
+    const bet = { legs: slip, stake, odds: combinedOdds(slip), placedAt: Date.now() };
     setStore((s) => addBet(s, bet));
-    setSelected(null);
-    setFlash(`Apuesta colocada: ${stake} pts a "${market.label}"`);
+    setSlip([]);
+    setFlash(
+      slip.length === 1
+        ? `Apuesta colocada: ${stake} pts a "${slip[0].label}"`
+        : `Combinada x${slip.length} colocada: ${stake} pts @ x${bet.odds.toFixed(2)}`
+    );
   }
 
   const buckets = useMemo(() => {
@@ -170,14 +224,13 @@ export function MundialPage() {
   const shown = buckets[tab] || [];
 
   return (
-    <main className="mx-auto max-w-2xl p-4 sm:p-6">
+    <main className="mx-auto max-w-2xl p-4 pb-40 sm:p-6">
       <Link to="/" className="font-cond text-sm text-dim hover:text-signal-amber">← Lobby</Link>
       <header className="mt-2 text-center">
         <h1 className="font-display text-2xl sm:text-3xl">🏆 Apuestas Mundial 2026</h1>
         <p className="mx-auto mt-1 max-w-md text-sm text-dim">
-          Partidos y resultados reales del Mundial. Apuesta con tus puntos: 1X2,
-          goles y props de casino (córners, tarjetas, tiros). Mercados cierran al
-          empezar el partido.
+          Partidos reales. Monta tu cupón: una selección (simple) o varias
+          (combinada, la cuota se multiplica). Una vez apuestas, es definitiva.
         </p>
       </header>
 
@@ -187,7 +240,6 @@ export function MundialPage() {
         </div>
       ) : null}
 
-      {/* Pestañas */}
       <div className="mt-4 flex gap-1.5">
         {[
           ["upcoming", `Próximos (${buckets.upcoming.length})`],
@@ -223,18 +275,54 @@ export function MundialPage() {
               <MatchCard
                 key={m.key}
                 match={m}
-                status={tab === "finished" ? "finished" : tab === "live" ? "live" : "upcoming"}
+                status={tab}
                 bettable={tab === "upcoming"}
-                selected={selected}
-                onSelect={setSelected}
-                onPlace={place}
-                points={points}
+                locked={matchLocked(store, m.key)}
+                slipMarketId={slip.find((l) => l.matchKey === m.key)?.marketId ?? null}
+                onToggle={toggleLeg}
               />
             ))
           )}
         </div>
       )}
+
+      <BetSlip
+        slip={slip}
+        stake={stake}
+        setStake={setStake}
+        points={points}
+        onRemove={(key) => setSlip((cur) => cur.filter((l) => l.matchKey !== key))}
+        onClear={() => setSlip([])}
+        onPlace={placeSlip}
+      />
     </main>
+  );
+}
+
+function BetRow({ b, settled }) {
+  return (
+    <div className="mb-1.5 rounded-lg border border-asphalt-700 bg-asphalt-900 px-3 py-2 font-cond text-sm">
+      <div className="flex items-center justify-between">
+        <span className="text-ink">
+          {b.legs.length === 1 ? "Simple" : `Combinada x${b.legs.length}`} @ x{b.odds.toFixed(2)}
+        </span>
+        {settled ? (
+          <span className={`font-display ${b.outcome === "win" ? "text-signal-green" : "text-signal-red"}`}>
+            {b.outcome === "win" ? `+${b.payout}` : `−${b.stake}`}
+          </span>
+        ) : (
+          <span className="text-signal-green">{b.stake} → {Math.round(b.stake * b.odds)}</span>
+        )}
+      </div>
+      <ul className="mt-1 space-y-0.5">
+        {b.legs.map((l, i) => (
+          <li key={i} className="flex justify-between text-xs text-dim">
+            <span className="truncate">{l.label} {l.sim ? "·sim" : ""}</span>
+            <span>{l.teams}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -246,18 +334,7 @@ function Bets({ store }) {
         {store.pending.length === 0 ? (
           <p className="font-cond text-sm text-dim">Sin apuestas pendientes.</p>
         ) : (
-          store.pending.map((b, i) => (
-            <div key={i} className="mb-1.5 flex items-center justify-between rounded-lg border border-asphalt-700 bg-asphalt-900 px-3 py-2 font-cond text-sm">
-              <div>
-                <div className="text-ink">{b.label} {b.sim ? "·sim" : ""}</div>
-                <div className="text-xs text-dim">{b.teams}</div>
-              </div>
-              <div className="text-right">
-                <div className="text-signal-green">{b.stake} → {Math.round(b.stake * b.odds)}</div>
-                <div className="text-xs text-dim">@{b.odds.toFixed(2)}</div>
-              </div>
-            </div>
-          ))
+          store.pending.map((b, i) => <BetRow key={i} b={b} settled={false} />)
         )}
       </section>
       <section>
@@ -265,17 +342,7 @@ function Bets({ store }) {
         {store.history.length === 0 ? (
           <p className="font-cond text-sm text-dim">Aún no hay resultados.</p>
         ) : (
-          store.history.map((b, i) => (
-            <div key={i} className="mb-1.5 flex items-center justify-between rounded-lg border border-asphalt-700 bg-asphalt-900 px-3 py-2 font-cond text-sm">
-              <div>
-                <div className="text-ink">{b.label}</div>
-                <div className="text-xs text-dim">{b.teams}</div>
-              </div>
-              <div className={`font-display ${b.outcome === "win" ? "text-signal-green" : "text-signal-red"}`}>
-                {b.outcome === "win" ? `+${b.payout}` : `−${b.stake}`}
-              </div>
-            </div>
-          ))
+          store.history.map((b, i) => <BetRow key={i} b={b} settled />)
         )}
       </section>
     </div>
