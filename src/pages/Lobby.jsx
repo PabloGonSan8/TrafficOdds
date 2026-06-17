@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 import { Link } from "react-router-dom";
 import { AdSlot } from "../components/ads/AdSlot";
 import { MON } from "../engine/monetization";
@@ -11,6 +11,22 @@ const GAMES = [
     desc: "Apuesta sobre el tráfico de la autopista: más/menos, comparativas y eventos sorpresa.",
     cat: "Principal",
     color: "#16a34a",
+  },
+  {
+    to: "/mundial",
+    icon: "🏆",
+    name: "Apuestas Mundial 2026",
+    desc: "Partidos y resultados reales del Mundial. Apuesta puntos: 1X2, goles y props de casino (córners, tarjetas, tiros).",
+    cat: "Principal",
+    color: "#16a34a",
+  },
+  {
+    to: "/reto",
+    icon: "🏁",
+    name: "Reto Diario",
+    desc: "El mismo tráfico para todos cada día. Predice cómo acaba la ronda y compite en la tabla. Sin puntos: solo honor.",
+    cat: "Principal",
+    color: "#f59e0b",
   },
   {
     to: "/garito",
@@ -141,6 +157,16 @@ const SECTIONS = [
   { cat: "Casino", title: "🎰 Casino", sub: "Clásicos del azar" },
 ];
 
+// Fisher-Yates: orden imparcial. Solo el casino se baraja en cada carga.
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 function GameCard({ game }) {
   return (
     <Link
@@ -222,6 +248,8 @@ function CarouselSection({ sec, list }) {
 }
 
 export function Lobby() {
+  // Una baraja por montaje/recarga; estable mientras navegas.
+  const casino = useMemo(() => shuffle(GAMES.filter((g) => g.cat === "Casino")), []);
   return (
     <main className="mx-auto max-w-6xl p-4 sm:p-6">
       <div className="py-5 text-center sm:py-8">
@@ -235,7 +263,7 @@ export function Lobby() {
       </div>
 
       {SECTIONS.map((sec, i) => {
-        const list = GAMES.filter((g) => g.cat === sec.cat);
+        const list = sec.cat === "Casino" ? casino : GAMES.filter((g) => g.cat === sec.cat);
         if (list.length === 0) return null;
         return (
           <div key={sec.cat}>

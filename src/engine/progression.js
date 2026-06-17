@@ -101,7 +101,7 @@ const MISSION_POOL = [
   },
 ];
 
-function hashString(str) {
+export function hashString(str) {
   let h = 1779033703 ^ str.length;
   for (let i = 0; i < str.length; i++) {
     h = Math.imul(h ^ str.charCodeAt(i), 3432918353);
@@ -110,7 +110,7 @@ function hashString(str) {
   return h >>> 0;
 }
 
-function mulberry32(seed) {
+export function mulberry32(seed) {
   let a = seed;
   return function () {
     a |= 0;

@@ -24,6 +24,8 @@ import { GaritoPage } from "./pages/GaritoPage";
 import { HorseRacePage } from "./pages/HorseRacePage";
 import { PrivacyPage } from "./pages/PrivacyPage";
 import { ContactPage } from "./pages/ContactPage";
+import { RetoPage } from "./pages/RetoPage";
+import { MundialPage } from "./pages/MundialPage";
 import { CookieConsent } from "./components/CookieConsent";
 
 function AppShell() {
@@ -50,6 +52,8 @@ function AppShell() {
         <Route path="/rueda-fortuna" element={<WheelPage />} />
         <Route path="/carrera" element={<RacePage />} />
         <Route path="/garito" element={<GaritoPage />} />
+        <Route path="/reto" element={<RetoPage />} />
+        <Route path="/mundial" element={<MundialPage />} />
         <Route path="/caballos" element={<HorseRacePage />} />
         <Route path="/privacidad" element={<PrivacyPage />} />
         <Route path="/contacto" element={<ContactPage />} />

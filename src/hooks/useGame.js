@@ -221,6 +221,10 @@ export function useGame() {
     window.addEventListener("pointerdown", startMusicOnGesture);
     window.addEventListener("keydown", startMusicOnGesture);
 
+    // La simulación de tráfico corre siempre (para resolver apuestas), pero sus
+    // efectos solo deben oírse estando en su página. Fuera, silencio.
+    const onTrafficPage = () => window.location.pathname === "/trafico";
+
     // Conecta los comandos secretos de consola con la economía del juego.
     cheatAward = (amount) =>
       awardPoints(amount, `🛣️ Peaje cobrado: +${amount.toLocaleString("es-ES")} pts`);
@@ -295,8 +299,10 @@ export function useGame() {
         st.history = st.history.slice(0, 50);
 
         const winCount = resolved.filter((r) => r.won).length;
-        if (winCount > 0) Audio.win();
-        else Audio.lose();
+        if (onTrafficPage()) {
+          if (winCount > 0) Audio.win();
+          else Audio.lose();
+        }
 
         // Progresión: XP, misiones y logros.
         const ev = {
@@ -366,7 +372,7 @@ export function useGame() {
         if (spawned.length > 0) setCounts({ ...round.counts });
         if (!wasRevealed && round.eventRevealed) {
           setEventText(round.event.label);
-          Audio.eventAlert();
+          if (onTrafficPage()) Audio.eventAlert();
         }
       }
 

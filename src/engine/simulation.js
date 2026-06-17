@@ -21,7 +21,7 @@ export const TYPE_LABELS = {
 };
 
 // Eventos sorpresa: alteran intensidad y mezcla de vehículos.
-const EVENTS = [
+export const EVENTS = [
   { id: "lluvia",    label: "🌧️ Lluvia intensa: el tráfico se reduce", mult: 0.65, mix: {} },
   { id: "horapunta", label: "🚨 Hora punta inesperada: ¡avalancha de vehículos!", mult: 1.6, mix: {} },
   { id: "accidente", label: "💥 Accidente en la vía: circulación a medio gas", mult: 0.5, mix: { especial: 3 } },
