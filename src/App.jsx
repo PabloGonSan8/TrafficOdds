@@ -26,6 +26,8 @@ import { PrivacyPage } from "./pages/PrivacyPage";
 import { ContactPage } from "./pages/ContactPage";
 import { RetoPage } from "./pages/RetoPage";
 import { MundialPage } from "./pages/MundialPage";
+import { PokerPage } from "./pages/PokerPage";
+import { BingoPage } from "./pages/BingoPage";
 import { CookieConsent } from "./components/CookieConsent";
 
 function AppShell() {
@@ -42,6 +44,8 @@ function AppShell() {
         <Route path="/tragaperras" element={<SlotsPage />} />
         <Route path="/blackjack" element={<BlackjackPage />} />
         <Route path="/baccarat" element={<BaccaratPage />} />
+        <Route path="/poker" element={<PokerPage />} />
+        <Route path="/bingo" element={<BingoPage />} />
         <Route path="/doble-o-nada" element={<CoinflipPage />} />
         <Route path="/dados" element={<DicePage />} />
         <Route path="/mayor-menor" element={<HigherLowerPage />} />

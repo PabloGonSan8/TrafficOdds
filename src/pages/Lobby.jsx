@@ -65,16 +65,32 @@ const GAMES = [
     icon: "🃏",
     name: "Blackjack",
     desc: "Llega a 21 contra la banca: pide, plántate o dobla. Paga 3:2.",
-    cat: "Casino",
+    cat: "Cartas",
     color: "#0ea5e9",
+  },
+  {
+    to: "/poker",
+    icon: "♠️",
+    name: "Póker IA",
+    desc: "Texas Hold'em y póker de 5 cartas contra 3 rivales con IA. Faroles, subidas y showdown.",
+    cat: "Cartas",
+    color: "#0f766e",
   },
   {
     to: "/baccarat",
     icon: "🀄",
     name: "Baccarat",
     desc: "Punto Banco: apuesta a Player, Banker o Tie. Reglas oficiales de casino.",
-    cat: "Casino",
+    cat: "Cartas",
     color: "#dc2626",
+  },
+  {
+    to: "/bingo",
+    icon: "🎱",
+    name: "Bingo 50",
+    desc: "Bingo rápido de 50 bolas. Compra cartones y gana con Línea, Dos líneas o Bingo. Apuesta lateral por bingo rápido.",
+    cat: "Casino",
+    color: "#7c3aed",
   },
   {
     to: "/tragaperras",
@@ -137,7 +153,7 @@ const GAMES = [
     icon: "🔼",
     name: "Mayor / Menor",
     desc: "¿La siguiente carta será mayor o menor? Encadena aciertos.",
-    cat: "Casino",
+    cat: "Cartas",
     color: "#14b8a6",
   },
   {
@@ -154,8 +170,14 @@ const SECTIONS = [
   { cat: "Principal", title: "⭐ Principales", sub: "Los nuestros" },
   { cat: "Tráfico", title: "🚦 Tráfico", sub: "Más de carretera" },
   { cat: "Carreras", title: "🏁 Carreras", sub: "Apuesta y a correr" },
+  { cat: "Cartas", title: "🃏 Cartas", sub: "Mesas de baraja" },
   { cat: "Casino", title: "🎰 Casino", sub: "Clásicos del azar" },
 ];
+
+// Un juego sale en su sección principal (cat) y en las extra (cats).
+function inSection(g, cat) {
+  return g.cat === cat || g.cats?.includes(cat);
+}
 
 // Fisher-Yates: orden imparcial. Solo el casino se baraja en cada carga.
 function shuffle(arr) {
@@ -234,7 +256,7 @@ function CarouselSection({ sec, list }) {
       <div className="relative">
         <div
           ref={scrollRef}
-          className="grid grid-cols-2 gap-3 sm:-mx-1 sm:flex sm:snap-x sm:snap-mandatory sm:gap-3 sm:overflow-x-auto sm:px-1 sm:pb-2 sm:[scrollbar-width:none] sm:[&::-webkit-scrollbar]:hidden"
+          className="grid grid-cols-2 gap-3 pt-2 sm:-mx-1 sm:flex sm:snap-x sm:snap-mandatory sm:gap-3 sm:overflow-x-auto sm:overflow-y-visible sm:px-1 sm:pb-3 sm:pt-3 sm:[scrollbar-width:none] sm:[&::-webkit-scrollbar]:hidden"
         >
           {list.map((g) => (
             <GameCard key={g.name} game={g} />
@@ -249,7 +271,7 @@ function CarouselSection({ sec, list }) {
 
 export function Lobby() {
   // Una baraja por montaje/recarga; estable mientras navegas.
-  const casino = useMemo(() => shuffle(GAMES.filter((g) => g.cat === "Casino")), []);
+  const casino = useMemo(() => shuffle(GAMES.filter((g) => inSection(g, "Casino"))), []);
   return (
     <main className="mx-auto max-w-6xl p-4 sm:p-6">
       <div className="py-5 text-center sm:py-8">
@@ -263,7 +285,7 @@ export function Lobby() {
       </div>
 
       {SECTIONS.map((sec, i) => {
-        const list = sec.cat === "Casino" ? casino : GAMES.filter((g) => g.cat === sec.cat);
+        const list = sec.cat === "Casino" ? casino : GAMES.filter((g) => inSection(g, sec.cat));
         if (list.length === 0) return null;
         return (
           <div key={sec.cat}>
