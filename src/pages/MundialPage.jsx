@@ -51,7 +51,6 @@ function MatchCard({ match, status, bettable, locked, selectedIds, onToggle }) {
             <div key={group}>
               <div className="mb-1 flex items-center gap-1 font-cond text-xs text-dim">
                 {group}
-                {list[0].sim ? <span className="rounded bg-asphalt-800 px-1 text-[0.6rem]">simulada</span> : null}
               </div>
               <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
                 {list.map((m) => {
@@ -193,7 +192,6 @@ export function MundialPage() {
         label: market.label,
         teams: `${match.team1} - ${match.team2}`,
         odds: market.odds,
-        sim: market.sim,
       };
       return existing ? cur.map((l) => (same(l) ? leg : l)) : [...cur, leg]; // otra del grupo → reemplaza
     });
@@ -320,7 +318,7 @@ function BetRow({ b, settled }) {
       <ul className="mt-1 space-y-0.5">
         {b.legs.map((l, i) => (
           <li key={i} className="flex justify-between text-xs text-dim">
-            <span className="truncate">{l.label} {l.sim ? "·sim" : ""}</span>
+            <span className="truncate">{l.label}</span>
             <span>{l.teams}</span>
           </li>
         ))}

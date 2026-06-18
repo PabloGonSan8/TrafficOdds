@@ -2,18 +2,14 @@
  * football.js — Apuestas sobre el Mundial 2026 con puntos del juego.
  *
  * Datos REALES de partidos y resultados desde OpenFootball (dominio público,
- * sin API key, CORS abierto). Con eso resolvemos lo que el dato real permite:
- *   - Resultado 1X2 (Local / Empate / Visitante).
- *   - Más/Menos de goles.
+ * sin API key, CORS abierto). TODOS los mercados se resuelven con el marcador
+ * real, así que no hay nada simulado:
+ *   - Resultado 1X2 y doble oportunidad.
+ *   - Más/Menos de goles en varias líneas (0.5 … 4.5).
+ *   - Ambos equipos marcan, par/impar, portería a cero, marcador exacto.
  *
- * Las "props" de casino (córners, tarjetas amarillas, tiros a puerta) NO están
- * en ninguna fuente gratis, así que se SIMULAN de forma determinista por
- * partido (semilla = equipos+fecha). La línea y el valor real son estables y
- * se revelan cuando el partido termina (según el dato real). Es ficción
- * coherente con el resto del juego, pero los marcamos como simuladas.
- *
- * Si algún día quieres props reales, API-Football las tiene (córners, tarjetas,
- * tiros) en su free tier (100 req/día) — pero expone la key en el cliente.
+ * Córners/tarjetas/tiros no existen en ninguna fuente gratis con CORS, así que
+ * NO se ofrecen (API-Football los tiene pero expone la key en el cliente).
  */
 import { mulberry32, hashString } from "./progression";
 
@@ -81,32 +77,7 @@ export function matchStatus(match, now = Date.now()) {
   return "upcoming";
 }
 
-/* ---------- Props simuladas (deterministas por partido) ---------- */
-
-const PROPS = [
-  { id: "corners", label: "Córners totales", mean: 10, sd: 2.6 },
-  { id: "cards", label: "Tarjetas amarillas", mean: 4, sd: 1.4 },
-  { id: "shots", label: "Tiros a puerta", mean: 8.5, sd: 2.2 },
-];
-
-/** Normal estándar por Box-Muller con el rng sembrado. */
-function gauss(rng, mean, sd) {
-  const u = Math.max(1e-9, rng());
-  const v = rng();
-  return mean + sd * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
-}
-
-/** Valores REALES simulados de las props (estables por partido). */
-export function propActuals(match) {
-  const rng = mulberry32(hashString("prop-" + match.key));
-  const out = {};
-  for (const p of PROPS) {
-    out[p.id] = Math.max(0, Math.round(gauss(rng, p.mean, p.sd)));
-  }
-  return out;
-}
-
-/* ---------- Generación de mercados ---------- */
+/* ---------- Generación de mercados (todo real desde el marcador) ---------- */
 
 /** Probabilidades 1X2 sembradas con ventaja de local (no son cuotas reales). */
 function odds1x2(match) {
@@ -119,45 +90,93 @@ function odds1x2(match) {
   return { pH, pD, pA };
 }
 
+/** Probabilidad estable por partido+mercado (semilla determinista). */
+function seedProb(match, tag, lo, hi) {
+  const rng = mulberry32(hashString(tag + "-" + match.key));
+  return lo + rng() * (hi - lo);
+}
+
+const OU_LINES = [0.5, 1.5, 2.5, 3.5, 4.5];
+const EXACT = [[0, 0], [1, 0], [0, 1], [1, 1], [2, 0], [0, 2], [2, 1], [1, 2], [2, 2], [3, 1], [1, 3]];
+
 /**
  * Mercados de un partido. Cada apuesta:
- *  { id, group, label, odds, sim, resolve(match) -> "win"|"lose"|null(pending) }
+ *  { id, group, label, odds, resolve(match) -> "win"|"lose"|null(pending) }
  */
 export function marketsFor(match) {
   const list = [];
   const { pH, pD, pA } = odds1x2(match);
   const res = (cond) => () => (match.finished ? (cond() ? "win" : "lose") : null);
+  const total = () => match.ft[0] + match.ft[1];
 
+  // Resultado 1X2.
   list.push(
-    { id: "1", group: "Resultado", label: `Gana ${match.team1}`, odds: clampOdds(pH), sim: false,
+    { id: "1", group: "Resultado", label: `Gana ${match.team1}`, odds: clampOdds(pH),
       resolve: res(() => match.ft[0] > match.ft[1]) },
-    { id: "X", group: "Resultado", label: "Empate", odds: clampOdds(pD), sim: false,
+    { id: "X", group: "Resultado", label: "Empate", odds: clampOdds(pD),
       resolve: res(() => match.ft[0] === match.ft[1]) },
-    { id: "2", group: "Resultado", label: `Gana ${match.team2}`, odds: clampOdds(pA), sim: false,
+    { id: "2", group: "Resultado", label: `Gana ${match.team2}`, odds: clampOdds(pA),
       resolve: res(() => match.ft[1] > match.ft[0]) }
   );
 
-  // Goles Más/Menos 2.5 (real, desde el marcador).
-  const rngG = mulberry32(hashString("ou-" + match.key));
-  const pOver = 0.45 + rngG() * 0.2;
+  // Doble oportunidad.
   list.push(
-    { id: "o25", group: "Goles", label: "Más de 2.5 goles", odds: clampOdds(pOver), sim: false,
-      resolve: res(() => match.ft[0] + match.ft[1] > 2.5) },
-    { id: "u25", group: "Goles", label: "Menos de 2.5 goles", odds: clampOdds(1 - pOver), sim: false,
-      resolve: res(() => match.ft[0] + match.ft[1] < 2.5) }
+    { id: "1X", group: "Doble oportunidad", label: `${match.team1} o empate`, odds: clampOdds(pH + pD),
+      resolve: res(() => match.ft[0] >= match.ft[1]) },
+    { id: "12", group: "Doble oportunidad", label: "Sin empate", odds: clampOdds(pH + pA),
+      resolve: res(() => match.ft[0] !== match.ft[1]) },
+    { id: "X2", group: "Doble oportunidad", label: `Empate o ${match.team2}`, odds: clampOdds(pD + pA),
+      resolve: res(() => match.ft[1] >= match.ft[0]) }
   );
 
-  // Props simuladas: línea en X.5 cerca de la media, ~50/50 con margen.
-  for (const p of PROPS) {
-    const line = p.mean + 0.5; // sin empate posible
-    const winOver = () => propActuals(match)[p.id] > line;
+  // Goles Más/Menos en varias líneas (la prob de Más baja al subir la línea).
+  const base = seedProb(match, "ou", 0.48, 0.62); // pOver en la línea 2.5
+  for (const line of OU_LINES) {
+    const pOver = Math.min(0.92, Math.max(0.08, base - (line - 2.5) * 0.14));
+    const tag = String(line).replace(".", "");
     list.push(
-      { id: `${p.id}-o`, group: p.label, label: `Más de ${line} ${p.label.toLowerCase()}`,
-        odds: clampOdds(0.5), sim: true, resolve: res(winOver) },
-      { id: `${p.id}-u`, group: p.label, label: `Menos de ${line} ${p.label.toLowerCase()}`,
-        odds: clampOdds(0.5), sim: true, resolve: res(() => !winOver()) }
+      { id: `o${tag}`, group: "Goles +/-", label: `Más de ${line}`, odds: clampOdds(pOver),
+        resolve: res(() => total() > line) },
+      { id: `u${tag}`, group: "Goles +/-", label: `Menos de ${line}`, odds: clampOdds(1 - pOver),
+        resolve: res(() => total() < line) }
     );
   }
+
+  // Ambos equipos marcan.
+  const pBtts = seedProb(match, "btts", 0.45, 0.6);
+  list.push(
+    { id: "btts-y", group: "Ambos marcan", label: "Sí", odds: clampOdds(pBtts),
+      resolve: res(() => match.ft[0] > 0 && match.ft[1] > 0) },
+    { id: "btts-n", group: "Ambos marcan", label: "No", odds: clampOdds(1 - pBtts),
+      resolve: res(() => match.ft[0] === 0 || match.ft[1] === 0) }
+  );
+
+  // Total par / impar.
+  const pEven = seedProb(match, "par", 0.48, 0.52);
+  list.push(
+    { id: "par", group: "Par/Impar", label: "Par", odds: clampOdds(pEven),
+      resolve: res(() => total() % 2 === 0) },
+    { id: "impar", group: "Par/Impar", label: "Impar", odds: clampOdds(1 - pEven),
+      resolve: res(() => total() % 2 === 1) }
+  );
+
+  // Portería a cero (gana el equipo sin encajar).
+  list.push(
+    { id: "cs1", group: "Portería a cero", label: `${match.team1} no encaja`, odds: clampOdds(seedProb(match, "cs1", 0.30, 0.50)),
+      resolve: res(() => match.ft[1] === 0) },
+    { id: "cs2", group: "Portería a cero", label: `${match.team2} no encaja`, odds: clampOdds(seedProb(match, "cs2", 0.25, 0.45)),
+      resolve: res(() => match.ft[0] === 0) }
+  );
+
+  // Marcador exacto (selección habitual).
+  for (const [a, b] of EXACT) {
+    list.push({
+      id: `ex${a}${b}`, group: "Marcador exacto", label: `${a}-${b}`,
+      odds: clampOdds(seedProb(match, `ex${a}${b}`, 0.05, 0.13)),
+      resolve: res(() => match.ft[0] === a && match.ft[1] === b),
+    });
+  }
+
   return list;
 }
 
@@ -256,10 +275,12 @@ export function _selfCheck() {
   console.assert(upcoming.finished === false, "futuro no terminado");
   console.assert(marketsFor(upcoming).find((m) => m.id === "1").resolve(upcoming) === null, "pendiente = null");
 
-  // Props deterministas: mismo partido → mismos valores.
-  const a = JSON.stringify(propActuals(finished));
-  const b = JSON.stringify(propActuals(finished));
-  console.assert(a === b, "props no deterministas");
+  // Mercados de goles reales: 2-0 → ambos marcan No, par, U2.5, portería a cero local.
+  console.assert(mkts.find((m) => m.id === "btts-n").resolve(finished) === "win", "2-0: ambos marcan No");
+  console.assert(mkts.find((m) => m.id === "par").resolve(finished) === "win", "2 goles es par");
+  console.assert(mkts.find((m) => m.id === "u25").resolve(finished) === "win", "2 < 2.5");
+  console.assert(mkts.find((m) => m.id === "cs1").resolve(finished) === "win", "local no encajó");
+  console.assert(mkts.find((m) => m.id === "ex20").resolve(finished) === "win", "marcador exacto 2-0");
 
   // Combinada: gana solo si todas las patas ganan.
   const leg1 = { matchKey: finished.key, marketId: "1", odds: mkts.find((m) => m.id === "1").odds };
@@ -282,7 +303,7 @@ export function _selfCheck() {
   console.assert(r.settled[0].outcome === "lose" && credited === 0, "combinada con caída debe perder");
 
   globalThis.localStorage = orig;
-  console.log("football self-check OK", { props: JSON.parse(a) });
+  console.log("football self-check OK", { markets: marketsFor(finished).length });
 }
 
 if (typeof process !== "undefined" && process.argv?.[1]?.endsWith("football.js")) {
