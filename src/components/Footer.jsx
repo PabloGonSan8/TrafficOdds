@@ -36,6 +36,10 @@ export function Footer() {
         </div>
 
         <nav className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 font-cond text-xs text-dim">
+          {/* Páginas de contenido estático (HTML real para SEO/AdSense): <a>, no Link. */}
+          <a href="/guias" className="hover:text-signal-amber">Guías</a>
+          <a href="/como-funciona" className="hover:text-signal-amber">Cómo funciona</a>
+          <a href="/faq" className="hover:text-signal-amber">FAQ</a>
           <Link to="/privacidad" className="hover:text-signal-amber">Privacidad</Link>
           <Link to="/contacto" className="hover:text-signal-amber">Contacto</Link>
         </nav>

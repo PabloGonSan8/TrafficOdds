@@ -282,6 +282,14 @@ export function Lobby() {
           Tu casino virtual de puntos: sin dinero real, solo predicción, suerte y
           fanfarronería. Los puntos son compartidos entre todos los juegos.
         </p>
+        {/* Enlaces a contenido estático (HTML real para SEO/AdSense): <a>, no Link. */}
+        <p className="mt-2 font-cond text-sm">
+          <a href="/guias" className="text-signal-amber hover:underline">📚 Guías de juego</a>
+          <span className="mx-2 text-dim">·</span>
+          <a href="/como-funciona" className="text-signal-amber hover:underline">Cómo funciona</a>
+          <span className="mx-2 text-dim">·</span>
+          <a href="/faq" className="text-signal-amber hover:underline">FAQ</a>
+        </p>
       </div>
 
       {SECTIONS.map((sec, i) => {
