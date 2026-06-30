@@ -12,7 +12,6 @@ import { fileURLToPath } from "node:url";
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const DIST = resolve(ROOT, "dist");
 const SITE = "https://trafficodds.netlify.app";
-const ADS_CLIENT = "ca-pub-9901763483290085";
 const EMAIL = "pablitocebre9@gmail.com";
 const UPDATED = "25 de junio de 2026";
 
@@ -493,8 +492,6 @@ function page({ path, title, description, body, jsonld }) {
 <meta property="og:description" content="${esc(description)}">
 <meta property="og:url" content="${url}">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚦</text></svg>">
-<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',analytics_storage:'denied'});try{var c=JSON.parse(localStorage.getItem('to-consent')||'null');if(c&&c.ad==='granted'){gtag('consent','update',{ad_storage:'granted',ad_user_data:'granted',ad_personalization:'granted',analytics_storage:'granted'})}}catch(e){}</script>
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADS_CLIENT}" crossorigin="anonymous"></script>
 ${ld}
 <style>
 :root{--bg:#14171c;--card:#1b1f26;--border:#2a2f37;--ink:#e9ecf1;--dim:#9aa0a6;--amber:#f59e0b}
@@ -544,7 +541,7 @@ ${body}
 <p class="note">TrafficOdds es un juego de entretenimiento con <strong>puntos virtuales</strong>: no se usa dinero real, no se compran ni venden puntos y no tienen valor económico. Juega con responsabilidad. Contacto: <a href="mailto:${EMAIL}">${EMAIL}</a>.</p>
 </main>
 <footer class="site"><div class="wrap">
-🚦 TrafficOdds · casino virtual de puntos, sin dinero real · gratis, financiado con publicidad<br>
+🚦 TrafficOdds · casino virtual de puntos, sin dinero real · gratis<br>
 <a href="/guias">Guías</a><a href="/como-funciona">Cómo funciona</a><a href="/faq">FAQ</a><a href="/privacidad">Privacidad</a><a href="/contacto">Contacto</a>
 </div></footer>
 </body>
@@ -709,10 +706,6 @@ const FAQ = [
   [
     "¿Es apto para menores?",
     "El juego no está dirigido a menores de 14 años. Aunque no hay dinero real, trata temáticas de apuestas y recomendamos un uso adecuado a la edad.",
-  ],
-  [
-    "¿Por qué hay anuncios?",
-    "TrafficOdds es gratis y se financia con publicidad. Hasta que aceptas el aviso de cookies, los anuncios funcionan en modo no personalizado. Puedes leer más en la política de privacidad.",
   ],
 ];
 

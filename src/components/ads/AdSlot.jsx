@@ -20,6 +20,9 @@ export function AdSlot({ slot, format = "auto", className = "", minHeight = 100 
     }
   }, [liveAd]);
 
+  // Ads desactivados: no renderizar ni placeholder (sin señal "made for ads").
+  if (!adsEnabled()) return null;
+
   return (
     <div className={`my-4 ${className}`}>
       <p className="mb-1 text-center font-cond text-[0.6rem] uppercase tracking-widest text-dim/70">Publicidad</p>

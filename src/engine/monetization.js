@@ -16,7 +16,9 @@
  * así ves el sistema funcionando sin configurar nada.
  */
 export const MON = {
-  adsenseClient: "ca-pub-9901763483290085",
+  // Vacío a propósito: AdSense desactivado mientras se resuelve la acción manual
+  // de spam de Google. Sin ID, no se inyecta el SDK ni se muestran anuncios.
+  adsenseClient: "",
   slots: {
     lobby: "",                  // ID del bloque del lobby
     footer: "",                 // ID del bloque del pie
