@@ -40,6 +40,7 @@ export function GameProvider({ children }) {
         results: game.results,
         roundSummary: game.roundSummary,
         eventText: game.eventText,
+        liveOdds: game.liveOdds,
         toasts: game.toasts,
       },
       actions: {
@@ -61,7 +62,7 @@ export function GameProvider({ children }) {
       game.achievements, game.missions, game.soundOn, game.musicOn, game.tutorialSeen,
       game.phase, game.clock, game.remaining, game.counts,
       game.market, game.playerBets, game.results, game.roundSummary,
-      game.eventText, game.toasts,
+      game.eventText, game.liveOdds, game.toasts,
       game.placeBet, game.spendPoints, game.awardPoints,
       game.toggleSound, game.toggleMusic, game.dismissTutorial, game.resetGame,
       game.attachCanvas,

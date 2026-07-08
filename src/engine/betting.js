@@ -1,16 +1,18 @@
 /**
- * betting.js — Generación del mercado, cuotas dinámicas y resolución.
+ * betting.js — Generación del mercado, cuotas dinámicas, live odds y resolución.
  * Las cuotas se estiman con una aproximación normal de Poisson sobre
  * el total esperado de la ronda (sin conocer el evento sorpresa).
  * Cada mercado lleva `kind` (para misiones/desbloqueos por nivel).
+ * Live odds: durante la simulación se recalculan en tiempo real según
+ * la proyección del tráfico observado.
  */
 import { minLevelForKind } from "./progression";
 
-const MIN_ODDS = 1.05;
-const MAX_ODDS = 25;
-const HOUSE_EDGE = 0.91; // margen de la casa sobre la probabilidad justa
+export const MIN_ODDS = 1.05;
+export const MAX_ODDS = 25;
+export const HOUSE_EDGE = 0.91;
 
-function clampOdds(p) {
+export function clampOdds(p) {
   const fair = HOUSE_EDGE / Math.max(0.01, Math.min(0.99, p));
   return Math.round(Math.max(MIN_ODDS, Math.min(MAX_ODDS, fair)) * 100) / 100;
 }
@@ -55,6 +57,7 @@ export function generateMarket(round) {
     title: `Más de ${overThreshold} vehículos`,
     sub: "Total de la ronda",
     odds: clampOdds(pOver),
+    _params: { threshold: overThreshold, lambda: L },
     resolve: (c) => c.total > overThreshold,
   }));
   list.push(market({
@@ -63,6 +66,7 @@ export function generateMarket(round) {
     title: `${overThreshold} vehículos o menos`,
     sub: "Total de la ronda",
     odds: clampOdds(1 - pOver),
+    _params: { threshold: overThreshold, lambda: L },
     resolve: (c) => c.total <= overThreshold,
   }));
 
@@ -76,6 +80,7 @@ export function generateMarket(round) {
     title: `Entre ${lo} y ${hi} vehículos`,
     sub: "Total de la ronda (inclusive)",
     odds: clampOdds(probBetween(L, lo, hi)),
+    _params: { lo, hi, lambda: L },
     resolve: (c) => c.total >= lo && c.total <= hi,
   }));
 
@@ -90,6 +95,7 @@ export function generateMarket(round) {
     title: "Más motos que camiones",
     sub: "Comparativa de la ronda",
     odds: clampOdds(pMotos),
+    _params: { lambda: L },
     resolve: (c) => c.moto > c.camion,
   }));
   list.push(market({
@@ -98,6 +104,7 @@ export function generateMarket(round) {
     title: "Camiones igualan o superan a motos",
     sub: "Comparativa de la ronda",
     odds: clampOdds(1 - pMotos),
+    _params: { lambda: L },
     resolve: (c) => c.camion >= c.moto,
   }));
 
@@ -110,6 +117,7 @@ export function generateMarket(round) {
     title: `Más de ${motoThreshold} motos`,
     sub: "Recuento por tipo",
     odds: clampOdds(probOver(motoLambda, motoThreshold)),
+    _params: { threshold: motoThreshold, lambda: L },
     resolve: (c) => c.moto > motoThreshold,
   }));
 
@@ -120,6 +128,7 @@ export function generateMarket(round) {
     title: "El coche será el más frecuente",
     sub: "Tipo dominante de la ronda",
     odds: clampOdds(0.9),
+    _params: { lambda: L },
     resolve: (c) => ["moto", "camion", "autobus", "especial"].every((t) => c.coche > c[t]),
   }));
   list.push(market({
@@ -128,6 +137,7 @@ export function generateMarket(round) {
     title: "El coche NO será el más frecuente",
     sub: "Tipo dominante · cuota alta",
     odds: clampOdds(0.08),
+    _params: { lambda: L },
     resolve: (c) => ["moto", "camion", "autobus", "especial"].some((t) => c[t] >= c.coche),
   }));
 
@@ -145,6 +155,7 @@ export function generateMarket(round) {
     title: `Exactamente ${exactGuess} coches`,
     sub: "Predicción exacta · cuota máxima",
     odds: clampOdds(pExact),
+    _params: { exactGuess, lambda: L },
     resolve: (c) => c.coche === exactGuess,
   }));
 
@@ -169,4 +180,118 @@ export function resolveBets(playerBets, counts, streak) {
     currentStreak = 0;
     return { bet: pb, won, payout: 0, delta: -pb.stake, streakAfter: 0 };
   });
+}
+
+/* ---------- Live Odds ---------- */
+
+/** Proyecta los totales finales basándose en la tasa actual. */
+function projectCounts(round) {
+  const elapsed = Math.max(0.1, round.elapsed);
+  const progress = elapsed / round.durationRealSec;
+
+  if (progress > 0.98) return { ...round.counts };
+
+  const factor = 1 / progress;
+  return {
+    total: Math.round(round.counts.total * factor),
+    coche: Math.round(round.counts.coche * factor),
+    moto: Math.round(round.counts.moto * factor),
+    camion: Math.round(round.counts.camion * factor),
+    autobus: Math.round(round.counts.autobus * factor),
+    especial: Math.round(round.counts.especial * factor),
+  };
+}
+
+/**
+ * Recalcula la cuota de un mercado en tiempo real basándose en
+ * los datos parciales de la ronda. Devuelve la cuota actualizada.
+ */
+export function recalculateLiveOdds(market, round) {
+  if (round.elapsed <= 0.5) return market.odds;
+
+  const P = projectCounts(round);
+  const params = market._params || {};
+  let newOdds;
+
+  switch (market.id) {
+    case "over": {
+      newOdds = round.counts.total > params.threshold
+        ? MIN_ODDS
+        : clampOdds(probOver(P.total, params.threshold));
+      break;
+    }
+    case "under": {
+      newOdds = round.counts.total > params.threshold
+        ? MAX_ODDS
+        : clampOdds(1 - probOver(P.total, params.threshold));
+      break;
+    }
+    case "range": {
+      newOdds = clampOdds(probBetween(P.total, params.lo, params.hi));
+      break;
+    }
+    case "motos-vs-camiones": {
+      const diffMean = P.moto - P.camion;
+      const diffSigma = Math.sqrt(Math.max(1, P.moto + P.camion));
+      const p = 1 - normCdf((0.5 - diffMean) / diffSigma);
+      newOdds = clampOdds(p);
+      break;
+    }
+    case "camiones-vs-motos": {
+      const diffMean = P.moto - P.camion;
+      const diffSigma = Math.sqrt(Math.max(1, P.moto + P.camion));
+      const p = 1 - normCdf((0.5 - diffMean) / diffSigma);
+      newOdds = clampOdds(1 - p);
+      break;
+    }
+    case "motos-over": {
+      newOdds = round.counts.moto > params.threshold
+        ? MIN_ODDS
+        : clampOdds(probOver(P.moto, params.threshold));
+      break;
+    }
+    case "coche-top": {
+      const others = ["moto", "camion", "autobus", "especial"];
+      const gap = others.reduce((min, t) => Math.min(min, P.coche - P[t]), Infinity);
+      if (gap >= 3) {
+        newOdds = clampOdds(0.88);
+      } else if (gap <= -3) {
+        newOdds = clampOdds(0.08);
+      } else {
+        newOdds = clampOdds(0.5);
+      }
+      break;
+    }
+    case "no-coche-top": {
+      const others = ["moto", "camion", "autobus", "especial"];
+      const maxOther = Math.max(...others.map((t) => P[t]));
+      const gap = maxOther - P.coche;
+      if (gap >= 3) {
+        newOdds = clampOdds(0.88);
+      } else if (gap <= -3) {
+        newOdds = clampOdds(0.08);
+      } else {
+        newOdds = clampOdds(0.5);
+      }
+      break;
+    }
+    case "exact-coches": {
+      if (round.counts.coche > params.exactGuess) {
+        newOdds = MAX_ODDS;
+      } else {
+        const carP = Math.max(1, P.coche || P.total * 0.55);
+        const carLambda = carP * 0.55;
+        const sigma = Math.sqrt(Math.max(1, carLambda));
+        const pExact =
+          Math.exp(-Math.pow(params.exactGuess - carLambda, 2) / (2 * Math.max(0.1, carLambda))) /
+          (sigma * Math.sqrt(2 * Math.PI));
+        newOdds = clampOdds(Math.max(0.001, pExact));
+      }
+      break;
+    }
+    default:
+      newOdds = market.odds;
+  }
+
+  return Math.round(newOdds * 100) / 100;
 }

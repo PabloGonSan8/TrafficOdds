@@ -73,6 +73,7 @@ export function useGame() {
   const [results, setResults] = useState(null);
   const [roundSummary, setRoundSummary] = useState(null);
   const [eventText, setEventText] = useState(null);
+  const [liveOdds, setLiveOdds] = useState([]);
   const [toasts, setToasts] = useState([]);
 
   // Transitorios del bucle: nunca provocan render por sí mismos.
@@ -82,6 +83,7 @@ export function useGame() {
   const marketRef = useRef([]);
   const playerBetsRef = useRef([]);
   const rendererRef = useRef(null);
+  const liveOddsRef = useRef([]);
 
   // El canvas vive en la página de tráfico y puede desmontarse al navegar:
   // la simulación sigue corriendo, solo se pausa el dibujo.
@@ -246,6 +248,8 @@ export function useGame() {
 
       setPhase("betting");
       setMarket(marketRef.current);
+      liveOddsRef.current = marketRef.current.map((m) => m.odds);
+      setLiveOdds(liveOddsRef.current);
       setPlayerBets([]);
       setResults(null);
       setRoundSummary(null);
@@ -369,7 +373,17 @@ export function useGame() {
         if (rendererRef.current && live && !document.hidden) {
           for (const t of spawned) rendererRef.current.spawn(t);
         }
-        if (spawned.length > 0) setCounts({ ...round.counts });
+        if (spawned.length > 0) {
+          setCounts({ ...round.counts });
+        }
+        // Live odds: recalcula cuotas en tiempo real
+        const liveUpdated = marketRef.current.map((m) =>
+          Betting.recalculateLiveOdds(m, round)
+        );
+        if (liveUpdated.some((o, i) => o !== liveOddsRef.current[i])) {
+          liveOddsRef.current = liveUpdated;
+          setLiveOdds(liveUpdated);
+        }
         if (!wasRevealed && round.eventRevealed) {
           setEventText(round.event.label);
           if (onTrafficPage()) Audio.eventAlert();
@@ -439,7 +453,7 @@ export function useGame() {
     points, streak, bestStreak, stats, history, roundNumber,
     xp, achievements, missions, soundOn, musicOn, tutorialSeen,
     phase, clock, remaining, counts, market, playerBets, results,
-    roundSummary, eventText, toasts, attachCanvas,
+    roundSummary, eventText, liveOdds, toasts, attachCanvas,
     placeBet, spendPoints, awardPoints,
     toggleSound, toggleMusic, dismissTutorial, resetGame,
   };
