@@ -164,6 +164,15 @@ const GAMES = [
     cat: "Casino",
     color: "#f59e0b",
   },
+  {
+    to: "https://montecaz.netlify.app/",
+    icon: "🎰",
+    name: "Montecaz",
+    desc: "Explora Montecaz: más juegos de casino virtual con puntos.",
+    cat: "Principal",
+    color: "#eab308",
+    external: true,
+  },
 ];
 
 const SECTIONS = [
@@ -190,9 +199,11 @@ function shuffle(arr) {
 }
 
 function GameCard({ game }) {
+  const Tag = game.external ? "a" : Link;
+  const extProps = game.external ? { href: game.to, target: "_blank", rel: "noopener noreferrer" } : { to: game.to };
   return (
-    <Link
-      to={game.to}
+    <Tag
+      {...extProps}
       style={{ "--c": game.color }}
       className="group relative flex w-full flex-col overflow-hidden rounded-2xl border border-asphalt-700 bg-asphalt-900 shadow-lg shadow-black/40 transition duration-200 hover:-translate-y-1 hover:border-[color:var(--c)] hover:shadow-[0_14px_34px_-14px_var(--c)] sm:w-48 sm:shrink-0 sm:snap-start"
     >
@@ -215,7 +226,7 @@ function GameCard({ game }) {
           <span className="transition-transform group-hover:translate-x-0.5">▶</span> Jugar
         </span>
       </div>
-    </Link>
+    </Tag>
   );
 }
 
