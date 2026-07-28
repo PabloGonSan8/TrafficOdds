@@ -165,7 +165,7 @@ const GAMES = [
     color: "#f59e0b",
   },
   {
-    to: "https://montecaz.netlify.app/",
+    to: "https://pablogonsan.itch.io/montecaz",
     icon: "🎰",
     name: "Montecaz",
     desc: "Explora Montecaz: más juegos de casino virtual con puntos.",
