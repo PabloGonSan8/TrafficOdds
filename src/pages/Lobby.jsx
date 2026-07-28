@@ -178,7 +178,7 @@ const GAMES = [
     icon: "🔢",
     name: "Noventa",
     desc: "Juego número 90: un nuevo desafío de casino virtual con puntos.",
-    cat: "Casino",
+    cat: "Principal",
     color: "#8b5cf6",
     external: true,
   },
