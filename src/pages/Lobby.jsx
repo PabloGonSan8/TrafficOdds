@@ -173,6 +173,15 @@ const GAMES = [
     color: "#eab308",
     external: true,
   },
+  {
+    to: "https://noventa-bka.pages.dev/",
+    icon: "🔢",
+    name: "Noventa",
+    desc: "Juego número 90: un nuevo desafío de casino virtual con puntos.",
+    cat: "Casino",
+    color: "#8b5cf6",
+    external: true,
+  },
 ];
 
 const SECTIONS = [
