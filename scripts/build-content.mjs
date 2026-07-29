@@ -439,36 +439,6 @@ const GUIDES = [
       "Un favorito no siempre gana: por eso paga poco, no porque sea seguro.",
     ],
   },
-  {
-    slug: "mundial",
-    icon: "🏆",
-    title: "Apuestas del Mundial 2026 con puntos",
-    play: "/mundial",
-    lead:
-      "Apuesta puntos sobre partidos del Mundial con mercados estilo casa de apuestas real: 1X2, goles y props. Solo entretenimiento, sin dinero real.",
-    sections: [
-      {
-        h: "Mercados principales",
-        p: [
-          "**1X2:** apuestas a victoria local (1), empate (X) o victoria visitante (2). Es el mercado clásico del fútbol.",
-          "**Goles (Más/Menos):** predices si el partido tendrá más o menos goles que una línea, normalmente 2,5. No importa quién gane, solo el total de goles.",
-          "**Props:** mercados de casino sobre el partido como córners, tarjetas o tiros, con cuotas propias.",
-        ],
-      },
-      {
-        h: "Simple y combinada",
-        p: [
-          "Una apuesta **simple** juega un solo mercado. Una **combinada** une varias selecciones en un solo cupón: las cuotas se multiplican entre sí, así que el pago potencial es mucho mayor... pero basta fallar una selección para perder todo el cupón.",
-          "Solo puedes apostar a partidos que aún no han empezado. Los resultados 1X2 y de goles se basan en datos reales; las props son simuladas.",
-        ],
-      },
-    ],
-    tips: [
-      "Las combinadas son tentadoras por el pago, pero cada selección extra reduce mucho tu probabilidad de acierto.",
-      "El mercado de goles 2,5 es bueno para empezar: solo decides si el partido será movido o cerrado.",
-      "No apuestes por corazón: la cuota del favorito ya descuenta que es favorito.",
-    ],
-  },
 ];
 
 // ── Plantilla HTML común ─────────────────────────────────────────────────────
@@ -647,7 +617,7 @@ function renderAbout() {
 <p>Cada apuesta tiene una cuota que refleja su probabilidad. Un resultado muy probable paga poco; uno improbable paga mucho. El pago de una apuesta acertada es tu puesta multiplicada por la cuota. Este principio es el mismo en todos los juegos: en la ruleta, un pleno paga ×36 porque solo 1 de 37 casillas gana; en los dados, el 7 exacto paga más que un más/menos porque es un resultado concreto.</p>
 
 <h2>Los juegos</h2>
-<p>Además del tráfico, TrafficOdds incluye ruleta europea, blackjack, póker contra IA, baccarat, bingo, tragaperras, crash, minas, plinko, dados, mayor o menor, carreras, hipódromo y apuestas deportivas del Mundial. Cada uno tiene su propia <a href="/guias">guía detallada</a> con reglas y consejos.</p>
+<p>Además del tráfico, TrafficOdds incluye ruleta europea, blackjack, póker contra IA, baccarat, bingo, tragaperras, crash, minas, plinko, dados, mayor o menor, carreras e hipódromo. Cada uno tiene su propia <a href="/guias">guía detallada</a> con reglas y consejos.</p>
 
 <h2>¿Es justo? ¿Hay trampa?</h2>
 <p>Los resultados se generan de forma aleatoria en tu navegador. Cada giro, tirada o reparto es independiente del anterior: no hay rachas que «toquen» ni sistemas infalibles. Los juegos de casino tienen, por diseño, una ligera ventaja para la banca, igual que en la realidad; por eso la gestión de tus puntos importa tanto como la suerte.</p>
@@ -697,7 +667,7 @@ const FAQ = [
   ],
   [
     "¿Qué juegos hay disponibles?",
-    "Tráfico simulado (el modo principal), ruleta, blackjack, póker, baccarat, bingo, tragaperras, crash, minas, plinko, dados, mayor o menor, carreras, hipódromo y apuestas del Mundial.",
+    "Tráfico simulado (el modo principal), ruleta, blackjack, póker, baccarat, bingo, tragaperras, crash, minas, plinko, dados, mayor o menor, carreras e hipódromo.",
   ],
   [
     "¿Puedo jugar desde el móvil?",
@@ -744,7 +714,6 @@ for (const g of GUIDES) write(`/guia/${g.slug}`, renderGuide(g));
 const APP_PATHS = [
   "/",
   "/trafico",
-  "/mundial",
   "/ruleta",
   "/blackjack",
   "/poker",
