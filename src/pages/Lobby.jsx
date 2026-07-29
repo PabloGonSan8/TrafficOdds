@@ -13,14 +13,6 @@ const GAMES = [
     color: "#16a34a",
   },
   {
-    to: "/mundial",
-    icon: "🏆",
-    name: "Apuestas Mundial 2026",
-    desc: "Partidos y resultados reales del Mundial. Apuesta puntos: 1X2, goles y props de casino (córners, tarjetas, tiros).",
-    cat: "Principal",
-    color: "#16a34a",
-  },
-  {
     to: "/reto",
     icon: "🏁",
     name: "Reto Diario",
@@ -166,26 +158,77 @@ const GAMES = [
   },
   {
     to: "https://pablogonsan.itch.io/montecaz",
-    icon: "🎰",
-    name: "Montecaz",
-    desc: "Explora Montecaz: más juegos de casino virtual con puntos.",
-    cat: "Principal",
-    color: "#eab308",
+    icon: "⚔️",
+    name: "MonteCaz",
+    desc: "Action RPG roguelike: explora un mundo procedural, mejora a tu cazador y derrota a los 12 jefes.",
+    cat: "Itch",
+    color: "#b45309",
     external: true,
   },
   {
     to: "https://noventa-bka.pages.dev/",
-    icon: "🔢",
+    icon: "⚽",
     name: "Noventa",
-    desc: "Juego número 90: un nuevo desafío de casino virtual con puntos.",
-    cat: "Principal",
-    color: "#8b5cf6",
+    desc: "Simulador de carrera futbolística: toma decisiones partido a partido y lleva a tu jugador a lo más alto.",
+    cat: "Itch",
+    color: "#16a34a",
+    external: true,
+  },
+  {
+    to: "https://pablogonsan.itch.io/transito",
+    icon: "🔎",
+    name: "Tránsito",
+    desc: "Investigación criminal narrativa: examina pruebas, interroga sospechosos y solo tienes una acusación.",
+    cat: "Itch",
+    color: "#7e22ce",
     external: true,
   },
 ];
 
+// Marca de itch.io (logo oficial simplificado) para la cabecera de la sección.
+function ItchIcon({ className = "" }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor" className={className}>
+      <path d="M3.13 1.34C2.08 1.96.02 4.33 0 4.95v1.03c0 1.3 1.22 2.45 2.33 2.45 1.33 0 2.43-1.1 2.43-2.41 0 1.31 1.07 2.41 2.4 2.41 1.33 0 2.37-1.1 2.37-2.41 0 1.31 1.13 2.41 2.46 2.41h.03c1.33 0 2.46-1.1 2.46-2.41 0 1.31 1.04 2.41 2.36 2.41 1.33 0 2.4-1.1 2.4-2.41 0 1.31 1.11 2.41 2.44 2.41C22.78 8.43 24 7.28 24 5.98V4.95c-.02-.62-2.08-2.99-3.13-3.61-3.25-.11-5.51-.13-8.87-.13-3.36 0-7.55.05-8.87.13zm6.38 6.48c-.12.22-.28.42-.47.6-.5.49-1.19.8-1.95.8-.76 0-1.45-.31-1.95-.8-.18-.18-.32-.37-.45-.59-.13.22-.3.41-.49.59-.5.49-1.19.8-1.95.8-.09 0-.19-.03-.26-.05-.11 1.11-.15 2.18-.17 2.95v.01l-.01 1.16c.02 2.34-.23 7.57 1.03 8.85 1.95.46 5.55.66 9.15.66 3.61 0 7.2-.21 9.15-.66 1.26-1.28 1.01-6.51 1.03-8.85l-.01-1.16v-.01c-.02-.77-.06-1.84-.17-2.95-.08.03-.17.05-.26.05-.76 0-1.45-.31-1.95-.8-.19-.18-.36-.37-.49-.59-.13.22-.27.41-.45.59-.5.49-1.19.8-1.95.8-.76 0-1.45-.31-1.95-.8-.19-.18-.35-.38-.47-.6-.12.22-.28.42-.46.6-.5.49-1.19.8-1.95.8h-.16c-.76 0-1.45-.31-1.95-.8-.19-.18-.34-.38-.46-.6zM7.5 10.87c.8 0 1.5 0 2.37.95.7-.07 1.42-.11 2.13-.11.71 0 1.44.04 2.13.11.88-.95 1.58-.95 2.37-.95.38 0 1.89 0 2.94 2.95l1.13 4.05c.84 3.02-.27 3.09-1.65 3.1-2.05-.08-3.19-1.57-3.19-3.05-1.14.19-2.47.28-3.73.28-1.26 0-2.59-.09-3.73-.28 0 1.48-1.14 2.97-3.19 3.05-1.38-.01-2.49-.08-1.65-3.1l1.13-4.05c1.05-2.95 2.56-2.95 2.94-2.95zm4.5 2.3s-2.06 1.9-2.43 2.57l1.34-.05v1.17c0 .06.54.03 1.09.03.55 0 1.09.03 1.09-.03v-1.17l1.34.05c-.37-.67-2.43-2.57-2.43-2.57z" />
+    </svg>
+  );
+}
+
 const SECTIONS = [
   { cat: "Principal", title: "⭐ Principales", sub: "Los nuestros" },
+  {
+    cat: "Itch",
+    title: (
+      <span className="inline-flex items-center gap-2">
+        <ItchIcon className="h-5 w-5 sm:h-6 sm:w-6" />
+        Juegos en itch.io
+      </span>
+    ),
+    sub: "Se abren en otra pestaña",
+    note: (
+      <>
+        Otros juegos hechos por{" "}
+        <a
+          href="https://github.com/PabloGonSan8"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-signal-amber hover:underline"
+        >
+          mí
+        </a>
+        , el autor de TrafficOdds, publicados en mi perfil de{" "}
+        <a
+          href="https://pablogonsan.itch.io"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-signal-amber hover:underline"
+        >
+          itch.io
+        </a>
+        . Son gratis y no tienen nada que ver con dinero real.
+      </>
+    ),
+  },
   { cat: "Tráfico", title: "🚦 Tráfico", sub: "Más de carretera" },
   { cat: "Carreras", title: "🏁 Carreras", sub: "Apuesta y a correr" },
   { cat: "Cartas", title: "🃏 Cartas", sub: "Mesas de baraja" },
@@ -271,6 +314,8 @@ function CarouselSection({ sec, list }) {
           <ArrowBtn dir="right" onClick={() => nudge(1)} />
         </div>
       </div>
+
+      {sec.note ? <p className="-mt-1 mb-1 text-xs leading-snug text-dim sm:text-sm">{sec.note}</p> : null}
 
       {/* Móvil: rejilla 2 columnas (scroll vertical). PC: carrusel horizontal. */}
       <div className="relative">
